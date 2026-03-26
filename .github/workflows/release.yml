@@ -101,7 +101,7 @@ jobs:
       - name: Package Artifacts
         run: |
           mkdir -p artifacts
-          cp "target/release/swt" "artifacts/swt-macos-${{ matrix.target }}"
+          cp "target/${{ matrix.target }}/release/swt" "artifacts/swt-macos-${{ matrix.target }}"
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
