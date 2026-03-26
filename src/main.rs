@@ -6,8 +6,8 @@ use clap::Parser;
 use console::style;
 use std::fs;
 use std::path::{Path, PathBuf};
-use swt::analyzer::AnalysisEngine;
 use swt::Config;
+use swt::analyzer::AnalysisEngine;
 
 const ASCII: &str = r"
                             __ 

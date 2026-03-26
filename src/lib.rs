@@ -137,7 +137,7 @@ impl Config {
     pub fn is_supported_file(path: &Path) -> bool {
         let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
         let supported = matches!(extension, "rs" | "ts" | "js" | "java" | "cs" | "py");
-        
+
         if path.exists() {
             path.is_file() && supported
         } else {

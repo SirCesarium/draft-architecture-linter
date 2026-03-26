@@ -1,7 +1,7 @@
 //! Terminal-based report rendering.
 
 use crate::FileReport;
-use console::{style, Emoji};
+use console::{Emoji, style};
 use std::io::{self, BufWriter, Write};
 
 /// Renders a summary of file reports to the terminal.
@@ -51,12 +51,17 @@ pub fn print_summary(reports: &[FileReport], quiet: bool) {
 
     let _ = writeln!(handle, "{}", style("─".repeat(60)).dim());
 
-    let summary_text = format!("Total: {total}  |  Sweet: {sweet_count}  |  Bitter: {bitter_count}");
+    let summary_text =
+        format!("Total: {total}  |  Sweet: {sweet_count}  |  Bitter: {bitter_count}");
 
     let _ = writeln!(
         handle,
         "\n{} {}\n",
-        if bitter_count == 0 { candy } else { lemon_emoji },
+        if bitter_count == 0 {
+            candy
+        } else {
+            lemon_emoji
+        },
         style(summary_text).bold()
     );
 

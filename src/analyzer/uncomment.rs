@@ -146,7 +146,8 @@ mod tests {
 
     #[test]
     fn test_remove_c_style_comments() {
-        let code = "fn main() {\n    // line comment\n    /* block\n       comment */\n    let x = 5;\n}";
+        let code =
+            "fn main() {\n    // line comment\n    /* block\n       comment */\n    let x = 5;\n}";
         let expected = "fn main() {\n\n    let x = 5;\n}";
         assert_eq!(remove_comments(code, "rs", true), expected);
     }
