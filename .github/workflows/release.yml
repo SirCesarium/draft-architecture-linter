@@ -116,6 +116,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Publish to Crates.io
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish
+
       - uses: actions/download-artifact@v4
         with:
           path: all-artifacts
