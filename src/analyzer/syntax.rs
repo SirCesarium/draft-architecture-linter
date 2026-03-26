@@ -25,10 +25,10 @@ pub fn count_imports(content: &str, extension: &str) -> usize {
         }
         "py" => {
             let python_regexes = PY_RE.get_or_init(|| {
-                vec![
+                vec!(
                     Regex::new(r"^import\s+").expect("Valid regex"),
                     Regex::new(r"^from\s+\w+\s+import").expect("Valid regex"),
-                ]
+                )
             });
             let regex_refs: Vec<&Regex> = python_regexes.iter().collect();
             count_matches(content, &regex_refs)
@@ -53,4 +53,27 @@ fn count_matches(content: &str, regexes: &[&Regex]) -> usize {
             regexes.iter().any(|re| re.is_match(trimmed))
         })
         .count()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_rs_imports() {
+        let code = "use std::io;\nuse crate::analyzer;\nfn main() {}";
+        assert_eq!(count_imports(code, "rs"), 2);
+    }
+
+    #[test]
+    fn test_py_imports() {
+        let code = "import os\nfrom sys import path\nprint('hello')";
+        assert_eq!(count_imports(code, "py"), 2);
+    }
+
+    #[test]
+    fn test_java_ts_imports() {
+        let code = "import React from 'react';\nimport { useState } from 'react';";
+        assert_eq!(count_imports(code, "ts"), 2);
+    }
 }

@@ -2,8 +2,8 @@
 
 /// Estimates the maximum nesting depth of a file's control flow.
 ///
-/// It uses a heuristic based on leading whitespace.
-/// Assuming 4 spaces or 1 tab equals one nesting level.
+/// Analysis is based on leading whitespace indentation.
+/// 4 spaces or 1 tab equals one nesting level.
 #[must_use]
 pub fn analyze_depth(content: &str) -> usize {
     let mut max_depth = 0;
@@ -16,7 +16,7 @@ pub fn analyze_depth(content: &str) -> usize {
 
         let leading_whitespace = line.len() - trimmed.len();
 
-        // 4 spaces = 1 level, 1 tab = 1 level.
+        // Indentation detection: 4 spaces or 1 tab per level.
         let depth = if line.starts_with('\t') {
             leading_whitespace
         } else {
@@ -29,4 +29,21 @@ pub fn analyze_depth(content: &str) -> usize {
     }
 
     max_depth
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_depth_spaces() {
+        let code = "fn main() {\n    if true {\n        println!();\n    }\n}";
+        assert_eq!(analyze_depth(code), 2);
+    }
+
+    #[test]
+    fn test_depth_tabs() {
+        let code = "fn main() {\n\tif true {\n\t\tprintln!();\n\t}\n}";
+        assert_eq!(analyze_depth(code), 2);
+    }
 }
