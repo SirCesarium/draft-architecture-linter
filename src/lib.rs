@@ -1,6 +1,6 @@
 //! Sweet: A blazing-fast code health and architecture analyzer.
 //!
-//! This crate provides the core logic for analyzing source code metrics,
+//! Provides the core logic for analyzing source code metrics,
 //! managing configurations, and generating health reports.
 
 use serde::{Deserialize, Serialize};
@@ -12,19 +12,19 @@ pub mod analyzer;
 pub mod errors;
 pub mod report;
 
-/// Thresholds defines the limits for various code metrics.
+/// Defines health metric limits.
 ///
-/// If a file exceeds any of these values, it is considered "bitter".
+/// Files exceeding these limits are flagged as "bitter".
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Thresholds {
-    /// Maximum number of lines allowed in a single file.
+    /// Maximum allowed source lines.
     #[serde(default = "default_max_lines")]
     pub max_lines: usize,
-    /// Maximum nesting depth (indentation level) allowed.
+    /// Maximum allowed control flow nesting depth.
     #[serde(default = "default_max_depth")]
     pub max_depth: usize,
-    /// Maximum number of imports allowed in a single file.
+    /// Maximum allowed import statements.
     #[serde(default = "default_max_imports")]
     pub max_imports: usize,
 }
@@ -49,31 +49,31 @@ impl Default for Thresholds {
     }
 }
 
-/// Global configuration for the Sweet analyzer.
+/// Analyzer global configuration.
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct Config {
-    /// List of directory or file patterns to exclude from analysis.
+    /// Directory or file patterns excluded from analysis.
     #[serde(default = "default_excludes")]
     pub exclude: Vec<String>,
-    /// Threshold configurations, including global defaults and language overrides.
+    /// Global and language-specific threshold settings.
     #[serde(default)]
     pub thresholds: ThresholdsConfig,
 }
 
-/// Holds global thresholds and specific overrides for different file extensions.
+/// Threshold management including global defaults and language-specific overrides.
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct ThresholdsConfig {
-    /// Default thresholds applied to all supported files.
+    /// Default thresholds for all supported files.
     #[serde(default)]
     pub global: Thresholds,
-    /// Language-specific overrides (e.g., "java", "rs").
+    /// Overrides indexed by file extension (e.g., "rs", "java").
     #[serde(default)]
     pub overrides: HashMap<String, PartialThresholds>,
 }
 
-/// A partial set of thresholds used for overrides.
+/// Subset of thresholds for language-specific overrides.
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 pub struct PartialThresholds {
@@ -97,7 +97,7 @@ fn default_excludes() -> Vec<String> {
 impl Config {
     /// Loads the `.swtrc` configuration from the project root.
     ///
-    /// If the file is not found or is invalid, it returns the default configuration.
+    /// Returns the default configuration if the file is missing or malformed.
     #[must_use]
     pub fn load(root: &Path) -> Self {
         let config_path = root.join(".swtrc");
@@ -110,9 +110,9 @@ impl Config {
         )
     }
 
-    /// Resolves the effective thresholds for a given file extension.
+    /// Resolves effective thresholds for a given file extension.
     ///
-    /// It starts with the global thresholds and applies any language-specific overrides.
+    /// Combines global defaults with language-specific overrides.
     #[must_use]
     pub fn get_thresholds(&self, extension: &str) -> Thresholds {
         let mut t = self.thresholds.global.clone();
@@ -130,11 +130,11 @@ impl Config {
         t
     }
 
-    /// Determines if a file is supported based on its extension.
+    /// Checks if a file is supported based on its extension.
+    ///
+    /// Validates extension support and ensures the path is a file if it exists.
     #[must_use]
     pub fn is_supported_file(path: &Path) -> bool {
-        // En producción necesitamos path.is_file(), pero para que sea más testable
-        // permitimos que si el path no existe, solo comprobemos la extensión.
         let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
         let supported = matches!(extension, "rs" | "ts" | "js" | "java" | "cs" | "py");
         
@@ -146,20 +146,20 @@ impl Config {
     }
 }
 
-/// Represents the health report for a single file.
+/// Results of a single file analysis.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FileReport {
-    /// The path to the analyzed file.
+    /// Path to the analyzed file.
     pub path: PathBuf,
-    /// Total number of lines in the file.
+    /// Total source lines.
     pub lines: usize,
-    /// Total number of imports detected.
+    /// Total import statements.
     pub imports: usize,
-    /// Maximum detected nesting depth.
+    /// Maximum nesting depth detected.
     pub max_depth: usize,
-    /// Whether the file is within all configured thresholds.
+    /// True if all metrics are within thresholds.
     pub is_sweet: bool,
-    /// List of specific threshold violations.
+    /// List of threshold violations.
     pub issues: Vec<String>,
 }
 
@@ -180,7 +180,7 @@ mod tests {
 
         let t = config.get_thresholds("java");
         assert_eq!(t.max_imports, 100);
-        assert_eq!(t.max_lines, 200); // Global default
+        assert_eq!(t.max_lines, 200);
     }
 
     #[test]
