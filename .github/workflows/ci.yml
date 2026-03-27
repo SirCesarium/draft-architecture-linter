@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: 🧪 Refinery Quality Check
-        uses: sircesarium/refinery-rs/ci@main
+        uses: sircesarium/refinery-rs/ci@v2.0
         with:
           enable-sweet: "true"
           enable-clippy: "true"

@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v5
 
       - name: 🛠️ Refinery Build
-        uses: sircesarium/refinery-rs@main
+        uses: sircesarium/refinery-rs@v2.0
         with:
           target: ${{ matrix.target }}
           binary-name: "swt"
