@@ -67,7 +67,12 @@ fn main() -> std::process::ExitCode {
 
     if reports.is_empty() {
         if !args.quiet {
-            println!("\n{}", style(" 📭 No supported files found to analyze.").yellow().bold());
+            println!(
+                "\n{}",
+                style(" 📭 No supported files found to analyze.")
+                    .yellow()
+                    .bold()
+            );
         }
         return std::process::ExitCode::SUCCESS;
     }
