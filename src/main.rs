@@ -42,13 +42,15 @@ struct Args {
     aggressive: bool,
 }
 
-fn main() {
+fn main() -> std::process::ExitCode {
     let args = Args::parse();
 
     // Handle specialized tool: Uncommenting.
     if let Some(file_path) = args.uncomment {
-        handle_uncomment(&file_path, args.aggressive);
-        return;
+        if handle_uncomment(&file_path, args.aggressive) {
+            return std::process::ExitCode::SUCCESS;
+        }
+        return std::process::ExitCode::FAILURE;
     }
 
     // Initialize configuration and analysis engine.
@@ -63,11 +65,26 @@ fn main() {
     // Execute core logic.
     let reports = engine.run(args.quiet, args.json.is_none());
 
+    if reports.is_empty() {
+        if !args.quiet {
+            println!("\n{}", style(" 📭 No supported files found to analyze.").yellow().bold());
+        }
+        return std::process::ExitCode::SUCCESS;
+    }
+
+    let bitter_count = reports.iter().filter(|r| !r.is_sweet).count();
+
     // Dispatch results to the requested reporting channel.
     if let Some(json_opt) = &args.json {
         handle_json_reporting(&reports, json_opt.as_ref());
     } else {
         swt::report::print_reports(&reports, args.quiet, None);
+    }
+
+    if bitter_count > 0 {
+        std::process::ExitCode::FAILURE
+    } else {
+        std::process::ExitCode::SUCCESS
     }
 }
 
@@ -81,7 +98,7 @@ fn handle_json_reporting(reports: &[swt::FileReport], json_opt: Option<&PathBuf>
 }
 
 /// Handles the 'uncomment' feature by stripping comments and rewriting the file.
-fn handle_uncomment(path: &Path, aggressive: bool) {
+fn handle_uncomment(path: &Path, aggressive: bool) -> bool {
     match fs::read_to_string(path) {
         Ok(content) => {
             let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
@@ -89,11 +106,16 @@ fn handle_uncomment(path: &Path, aggressive: bool) {
 
             if fs::write(path, clean).is_ok() {
                 println!("{}", style("Uncommented!").cyan().bold());
+                true
             } else {
                 eprintln!("{}", style("Error: Could not write to file").red());
+                false
             }
         }
-        Err(e) => eprintln!("Error: Could not read file {}: {}", path.display(), e),
+        Err(e) => {
+            eprintln!("Error: Could not read file {}: {}", path.display(), e);
+            false
+        }
     }
 }
 

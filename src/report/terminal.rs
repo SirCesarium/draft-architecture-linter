@@ -11,20 +11,6 @@ pub fn print_summary(reports: &[FileReport], quiet: bool) {
     let stdout = io::stdout();
     let mut handle = BufWriter::new(stdout.lock());
 
-    if reports.is_empty() {
-        if !quiet {
-            let _ = writeln!(
-                handle,
-                "\n{}",
-                style(" 📭 No supported files found to analyze.")
-                    .yellow()
-                    .bold()
-            );
-        }
-        let _ = handle.flush();
-        return;
-    }
-
     if quiet {
         print_quiet_summary(&mut handle, reports);
         let _ = handle.flush();
@@ -137,24 +123,33 @@ fn render_file_row<W: Write>(handle: &mut W, report: &FileReport) {
 
 /// Renders a minimal summary for quiet mode.
 fn print_quiet_summary<W: Write>(handle: &mut W, reports: &[FileReport]) {
+    let bitter_count = reports.iter().filter(|r| !r.is_sweet).count();
+
+    if bitter_count == 0 {
+        return;
+    }
+
     for report in reports {
         if !report.is_sweet {
             let _ = writeln!(
                 handle,
-                "[BITTER] {}: {}",
-                report.path.display(),
-                report.issues.join(", ")
+                "{} {}: {}",
+                style("BITTER").red().bold(),
+                style(report.path.display()).white(),
+                style(report.issues.join(", ")).yellow().italic()
             );
         }
     }
 
     let total = reports.len();
-    let sweet_count = reports.iter().filter(|r| r.is_sweet).count();
-    let bitter_count = total - sweet_count;
+    let sweet_count = total - bitter_count;
 
     let _ = writeln!(
         handle,
-        "Total: {total} | Sweet: {sweet_count} | Bitter: {bitter_count}"
+        "\nSummary: {} files analyzed, {} sweet, {} bitter",
+        style(total).bold(),
+        style(sweet_count).green(),
+        style(bitter_count).red().bold()
     );
 }
 
