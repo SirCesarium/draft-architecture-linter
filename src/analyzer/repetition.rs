@@ -45,7 +45,10 @@ pub fn analyze_repetition(content: &str) -> f64 {
     }
 
     let repeated_count = repetitive_lines.iter().filter(|&&r| r).count();
-    (repeated_count as f64 / lines.len() as f64) * 100.0
+    #[allow(clippy::cast_precision_loss)]
+    {
+        (repeated_count as f64 / lines.len() as f64) * 100.0
+    }
 }
 
 #[cfg(test)]
@@ -55,7 +58,7 @@ mod tests {
     #[test]
     fn test_repetition() {
         let no_rep = "fn main() {\n    let x = 1;\n    let y = 2;\n    let z = 3;\n    let w = 4;\n}";
-        assert_eq!(analyze_repetition(no_rep), 0.0);
+        assert!(analyze_repetition(no_rep).abs() < f64::EPSILON);
 
         let rep = "let a = 1; let b = 2; let c = 3; let d = 4; let a = 1; let b = 2; let c = 3; let d = 4;";
         assert!(analyze_repetition(rep) > 0.0);
