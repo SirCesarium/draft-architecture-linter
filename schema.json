@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Config",
-  "description": "Global configuration for the Sweet analyzer.",
+  "description": "Analyzer global configuration.",
   "type": "object",
   "properties": {
     "exclude": {
-      "description": "List of directory or file patterns to exclude from analysis.",
+      "description": "Directory or file patterns excluded from analysis.",
       "type": "array",
       "default": [
         "node_modules",
@@ -21,13 +21,14 @@
       }
     },
     "thresholds": {
-      "description": "Threshold configurations, including global defaults and language overrides.",
+      "description": "Global and language-specific threshold settings.",
       "$ref": "#/$defs/ThresholdsConfig",
       "default": {
         "global": {
-          "max_depth": 4,
+          "max_depth": 5,
           "max_imports": 20,
-          "max_lines": 200
+          "max_lines": 250,
+          "max_repetition": 10.0
         },
         "overrides": {}
       }
@@ -35,7 +36,7 @@
   },
   "$defs": {
     "PartialThresholds": {
-      "description": "A partial set of thresholds used for overrides.",
+      "description": "Subset of thresholds for language-specific overrides.",
       "type": "object",
       "properties": {
         "max_depth": {
@@ -61,51 +62,65 @@
           ],
           "format": "uint",
           "minimum": 0
+        },
+        "max_repetition": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "format": "double"
         }
       }
     },
     "Thresholds": {
-      "description": "Thresholds defines the limits for various code metrics.\n\nIf a file exceeds any of these values, it is considered \"bitter\".",
+      "description": "Defines health metric limits.\n\nFiles exceeding these limits are flagged as \"bitter\".",
       "type": "object",
       "properties": {
         "max_depth": {
-          "description": "Maximum nesting depth (indentation level) allowed.",
+          "description": "Maximum allowed control flow nesting depth.",
           "type": "integer",
           "format": "uint",
-          "default": 4,
+          "default": 5,
           "minimum": 0
         },
         "max_imports": {
-          "description": "Maximum number of imports allowed in a single file.",
+          "description": "Maximum allowed import statements.",
           "type": "integer",
           "format": "uint",
           "default": 20,
           "minimum": 0
         },
         "max_lines": {
-          "description": "Maximum number of lines allowed in a single file.",
+          "description": "Maximum allowed source lines.",
           "type": "integer",
           "format": "uint",
-          "default": 200,
+          "default": 250,
           "minimum": 0
+        },
+        "max_repetition": {
+          "description": "Maximum allowed repetition percentage (0-100).",
+          "type": "number",
+          "format": "double",
+          "default": 10.0
         }
       }
     },
     "ThresholdsConfig": {
-      "description": "Holds global thresholds and specific overrides for different file extensions.",
+      "description": "Threshold management including global defaults and language-specific overrides.",
       "type": "object",
       "properties": {
         "global": {
-          "description": "Default thresholds applied to all supported files.",
+          "description": "Default thresholds for all supported files.",
           "$ref": "#/$defs/Thresholds",
           "default": {
-            "max_depth": 4,
+            "max_depth": 5,
             "max_imports": 20,
-            "max_lines": 200
+            "max_lines": 250,
+            "max_repetition": 10.0
           }
         },
         "overrides": {
-          "description": "Language-specific overrides (e.g., \"java\", \"rs\").",
+          "description": "Overrides indexed by file extension (e.g., \"rs\", \"java\").",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/$defs/PartialThresholds"

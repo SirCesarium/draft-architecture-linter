@@ -2,6 +2,7 @@
 
 pub mod complexity;
 pub mod engine;
+pub mod repetition;
 pub mod syntax;
 pub mod uncomment;
 pub mod volume;
@@ -27,6 +28,9 @@ pub fn analyze_file(path: &Path, config: &Config) -> Option<FileReport> {
     let lines = volume::count_lines(&content);
     let imports = syntax::count_imports(&content, extension);
     let max_depth = complexity::analyze_depth(&content);
+    
+    let clean_content = uncomment::remove_comments(&content, extension, true);
+    let repetition = repetition::analyze_repetition(&clean_content);
 
     let mut issues = Vec::new();
 
@@ -48,12 +52,19 @@ pub fn analyze_file(path: &Path, config: &Config) -> Option<FileReport> {
             max_depth, thresholds.max_depth
         ));
     }
+    if repetition > thresholds.max_repetition {
+        issues.push(format!(
+            "High code repetition: {:.1}% (max {:.1}%)",
+            repetition, thresholds.max_repetition
+        ));
+    }
 
     Some(FileReport {
         path: path.to_path_buf(),
         lines,
         imports,
         max_depth,
+        repetition,
         is_sweet: issues.is_empty(),
         issues,
     })

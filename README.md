@@ -79,7 +79,7 @@ Control the health thresholds using a `.swtrc` file in your project root:
 {
   "$schema": "https://raw.githubusercontent.com/SirCesarium/sweet/main/schema.json",
   "thresholds": {
-    "global": { "max_lines": 200, "max_depth": 5 },
+    "global": { "max_lines": 250, "max_depth": 5, "max_repetition": 10.0 },
     "overrides": {
       "rust": { "max_imports": 15 },
       "java": { "max_imports": 50 }

@@ -27,24 +27,31 @@ pub struct Thresholds {
     /// Maximum allowed import statements.
     #[serde(default = "default_max_imports")]
     pub max_imports: usize,
+    /// Maximum allowed repetition percentage (0-100).
+    #[serde(default = "default_max_repetition")]
+    pub max_repetition: f64,
 }
 
 const fn default_max_lines() -> usize {
-    200
+    250
 }
 const fn default_max_depth() -> usize {
-    4
+    5
 }
 const fn default_max_imports() -> usize {
     20
+}
+const fn default_max_repetition() -> f64 {
+    10.0
 }
 
 impl Default for Thresholds {
     fn default() -> Self {
         Self {
-            max_lines: 200,
-            max_depth: 4,
+            max_lines: 250,
+            max_depth: 5,
             max_imports: 20,
+            max_repetition: 10.0,
         }
     }
 }
@@ -80,6 +87,7 @@ pub struct PartialThresholds {
     pub max_lines: Option<usize>,
     pub max_depth: Option<usize>,
     pub max_imports: Option<usize>,
+    pub max_repetition: Option<f64>,
 }
 
 fn default_excludes() -> Vec<String> {
@@ -126,6 +134,9 @@ impl Config {
             if let Some(v) = over.max_imports {
                 t.max_imports = v;
             }
+            if let Some(v) = over.max_repetition {
+                t.max_repetition = v;
+            }
         }
         t
     }
@@ -157,6 +168,8 @@ pub struct FileReport {
     pub imports: usize,
     /// Maximum nesting depth detected.
     pub max_depth: usize,
+    /// Repetition percentage (0.0 to 100.0).
+    pub repetition: f64,
     /// True if all metrics are within thresholds.
     pub is_sweet: bool,
     /// List of threshold violations.
@@ -180,7 +193,7 @@ mod tests {
 
         let t = config.get_thresholds("java");
         assert_eq!(t.max_imports, 100);
-        assert_eq!(t.max_lines, 200);
+        assert_eq!(t.max_lines, 250);
     }
 
     #[test]

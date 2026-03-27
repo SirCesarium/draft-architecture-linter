@@ -83,8 +83,8 @@ fn render_file_row<W: Write>(handle: &mut W, report: &FileReport) {
     };
 
     let stats = format!(
-        "{} lines · {} imports · depth {}{line_emoji}{special_emoji}",
-        report.lines, report.imports, report.max_depth
+        "{} lines · {} imports · depth {} · {:.1}% repeat{line_emoji}{special_emoji}",
+        report.lines, report.imports, report.max_depth, report.repetition
     );
 
     if report.is_sweet {
