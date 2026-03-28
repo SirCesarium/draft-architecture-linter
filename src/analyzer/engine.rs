@@ -107,10 +107,8 @@ impl AnalysisEngine {
             Self::finalize_inspection(&mut processed_files, &global_chunks);
         }
 
-        let mut reports: Vec<FileReport> = processed_files
-            .into_iter()
-            .map(|pf| pf.report)
-            .collect();
+        let mut reports: Vec<FileReport> =
+            processed_files.into_iter().map(|pf| pf.report).collect();
 
         Self::sort_reports(&mut reports);
         reports
