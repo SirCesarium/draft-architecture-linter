@@ -4,6 +4,7 @@
   "description": "Blazing-fast code health and architecture analyzer.",
   "version": "2.0.1",
   "publisher": "SirCesarium",
+  "icon": "icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
