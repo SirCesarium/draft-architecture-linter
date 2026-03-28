@@ -1,11 +1,11 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Config",
-  "description": "Analyzer global configuration.",
+  "description": "Global analyzer configuration.",
   "type": "object",
   "properties": {
     "exclude": {
-      "description": "Directory or file patterns excluded from analysis.",
+      "description": "Glob patterns for files/directories to exclude.",
       "type": "array",
       "default": [
         "node_modules",
@@ -21,7 +21,7 @@
       }
     },
     "thresholds": {
-      "description": "Global and language-specific threshold settings.",
+      "description": "Global and language-specific threshold overrides.",
       "$ref": "#/$defs/ThresholdsConfig",
       "default": {
         "global": {
@@ -32,11 +32,19 @@
         },
         "overrides": {}
       }
+    },
+    "ui": {
+      "description": "Terminal UI settings.",
+      "$ref": "#/$defs/UIConfig",
+      "default": {
+        "bitter_threshold": 400,
+        "lemon_threshold": 200
+      }
     }
   },
   "$defs": {
     "PartialThresholds": {
-      "description": "Subset of thresholds for language-specific overrides.",
+      "description": "Sparse threshold structure for specific overrides.",
       "type": "object",
       "properties": {
         "max_depth": {
@@ -73,7 +81,7 @@
       }
     },
     "Thresholds": {
-      "description": "Defines health metric limits.\n\nFiles exceeding these limits are flagged as \"bitter\".",
+      "description": "Defines health metric limits for analysis.",
       "type": "object",
       "properties": {
         "max_depth": {
@@ -84,14 +92,14 @@
           "minimum": 0
         },
         "max_imports": {
-          "description": "Maximum allowed import statements.",
+          "description": "Maximum allowed import/dependency statements.",
           "type": "integer",
           "format": "uint",
           "default": 20,
           "minimum": 0
         },
         "max_lines": {
-          "description": "Maximum allowed source lines.",
+          "description": "Maximum allowed source lines of code.",
           "type": "integer",
           "format": "uint",
           "default": 250,
@@ -106,11 +114,11 @@
       }
     },
     "ThresholdsConfig": {
-      "description": "Threshold management including global defaults and language-specific overrides.",
+      "description": "Threshold management container.",
       "type": "object",
       "properties": {
         "global": {
-          "description": "Default thresholds for all supported files.",
+          "description": "Default thresholds for all files.",
           "$ref": "#/$defs/Thresholds",
           "default": {
             "max_depth": 5,
@@ -120,12 +128,32 @@
           }
         },
         "overrides": {
-          "description": "Overrides indexed by file extension (e.g., \"rs\", \"java\").",
+          "description": "Language-specific overrides indexed by extension.",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/$defs/PartialThresholds"
           },
           "default": {}
+        }
+      }
+    },
+    "UIConfig": {
+      "description": "Visual feedback configuration for terminal reporting.",
+      "type": "object",
+      "properties": {
+        "bitter_threshold": {
+          "description": "Line threshold to trigger the 'bitter' error status.",
+          "type": "integer",
+          "format": "uint",
+          "default": 400,
+          "minimum": 0
+        },
+        "lemon_threshold": {
+          "description": "Line threshold to trigger the 'lemon' warning.",
+          "type": "integer",
+          "format": "uint",
+          "default": 200,
+          "minimum": 0
         }
       }
     }
