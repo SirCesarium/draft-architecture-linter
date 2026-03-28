@@ -1,6 +1,6 @@
-//! Logic for measuring file volume (`SLoC`).
+//! Line counting and file volume metrics.
 
-/// Counts the number of lines in a string content.
+/// Counts the number of source lines in the content.
 #[must_use]
 pub fn count_lines(content: &str) -> usize {
     content.lines().count()
@@ -12,8 +12,7 @@ mod tests {
 
     #[test]
     fn test_count_lines() {
-        let code = "line1\nline2\nline3";
-        assert_eq!(count_lines(code), 3);
+        assert_eq!(count_lines("line1\nline2\nline3"), 3);
     }
 
     #[test]

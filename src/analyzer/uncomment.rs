@@ -1,139 +1,154 @@
-//! Logic for removing comments while preserving documentation or string literals.
+//! High-performance comment stripping with documentation preservation.
 
-/// Strips comments from the provided source code content.
+use crate::languages::LanguageRegistry;
+
+/// Removes comments from source code while optionally preserving documentation.
 ///
-/// It supports C-style comments (//, /* */) and Python-style comments (#).
-///
-/// Arguments:
-/// * `aggressive`: If true, it also removes documentation comments (///, /**).
-/// * `extension`: The file extension used to determine the comment style.
+/// Uses language-specific delimiters from the registry to identify and strip comments.
 #[must_use]
 pub fn remove_comments(content: &str, extension: &str, aggressive: bool) -> String {
-    let mut result = String::with_capacity(content.len());
-    let chars: Vec<char> = content.chars().collect();
-    let mut i = 0;
+    let registry = LanguageRegistry::get();
+    let lang = match registry.get_by_extension(extension) {
+        Some(l) => l,
+        None => return content.to_string(),
+    };
 
-    let is_python = extension == "py";
-    let is_c_style = matches!(extension, "rs" | "java" | "ts" | "js" | "cs");
+    let mut result = String::with_capacity(content.len());
+    let mut chars = content.chars().peekable();
+
+    let line_prefix = lang.line_comment();
+    let block_delimiters = lang.block_comment();
 
     let mut in_string = false;
     let mut string_char = '\"';
     let mut in_block_comment = false;
     let mut in_line_comment = false;
 
-    while i < chars.len() {
-        let current = chars[i];
-        let next = chars.get(i + 1);
-        let next_next = chars.get(i + 2);
-
-        // State: Inside /* block comment */
+    while let Some(current) = chars.next() {
         if in_block_comment {
-            if is_c_style && current == '*' && next == Some(&'/') {
-                in_block_comment = false;
-                i += 2;
-                continue;
+            if let Some((_, end)) = block_delimiters {
+                let end_chars: Vec<char> = end.chars().collect();
+                if current == end_chars[0]
+                    && end_chars.len() > 1
+                    && chars.peek() == Some(&end_chars[1])
+                {
+                    chars.next();
+                    in_block_comment = false;
+                    continue;
+                }
             }
-            i += 1;
+            if current == '\n' {
+                result.push('\n');
+            }
             continue;
         }
 
-        // State: Inside // line comment
         if in_line_comment {
             if current == '\n' {
                 in_line_comment = false;
                 result.push('\n');
             }
-            i += 1;
             continue;
         }
 
         if in_string {
             result.push(current);
-            #[allow(clippy::collapsible_if)]
             if current == '\\' {
-                if let Some(n) = next {
-                    result.push(*n);
-                    i += 2;
-                    continue;
+                if let Some(n) = chars.next() {
+                    result.push(n);
                 }
-            }
-            if current == string_char {
+            } else if current == string_char {
                 in_string = false;
             }
-            i += 1;
             continue;
         }
 
-        // Detect String start
-        if current == '\"' || current == '\'' || (current == '`' && !is_python) {
+        if current == '\"' || current == '\'' || current == '`' {
             in_string = true;
             string_char = current;
             result.push(current);
-            i += 1;
             continue;
         }
 
-        // Detect Comment starts (C-style and Python)
-        if is_c_style
-            && current == '/'
-            && let Some(&c) = next
-        {
-            let is_block = c == '*';
-            let is_line = c == '/';
-            if is_block || is_line {
-                let is_doc = next_next.is_some_and(|&n| n == '*' || n == '/' || n == '!');
-                if !aggressive && is_doc {
-                    result.push('/');
-                    result.push(c);
-                    i += 2;
+        if let Some((start, _)) = block_delimiters {
+            let start_chars: Vec<char> = start.chars().collect();
+            if current == start_chars[0]
+                && start_chars.len() > 1
+                && chars.peek() == Some(&start_chars[1])
+            {
+                let mut is_doc = false;
+                if start == "/*" {
+                    chars.next();
+                    if chars.peek() == Some(&'*') {
+                        is_doc = true;
+                    }
+
+                    if !aggressive && is_doc {
+                        result.push_str("/**");
+                        chars.next();
+                        continue;
+                    }
+
+                    in_block_comment = true;
                     continue;
                 }
-                if is_block {
-                    in_block_comment = true;
-                } else {
-                    in_line_comment = true;
+            }
+        }
+
+        if let Some(prefix) = line_prefix {
+            let prefix_chars: Vec<char> = prefix.chars().collect();
+            if current == prefix_chars[0]
+                && (prefix_chars.len() == 1
+                    || (prefix_chars.len() > 1 && chars.peek() == Some(&prefix_chars[1])))
+            {
+                if prefix_chars.len() > 1 {
+                    chars.next();
                 }
-                i += 2;
+
+                let is_doc = if prefix == "//" {
+                    chars.peek() == Some(&'/') || chars.peek() == Some(&'!')
+                } else {
+                    false
+                };
+
+                if !aggressive && is_doc {
+                    result.push_str(prefix);
+                    continue;
+                }
+
+                in_line_comment = true;
                 continue;
             }
         }
 
-        if is_python && current == '#' {
-            in_line_comment = true;
-            i += 1;
-            continue;
-        }
-
         result.push(current);
-        i += 1;
     }
 
-    // Clean up trailing whitespace and normalize consecutive empty lines.
     normalize_whitespace(&result)
 }
 
-/// Normalizes whitespace by removing trailing spaces and collapsing multiple empty lines.
+/// Trims trailing spaces and collapses consecutive empty lines.
 fn normalize_whitespace(content: &str) -> String {
-    let mut final_lines = Vec::new();
+    let mut res = String::with_capacity(content.len());
     let mut last_was_empty = false;
 
     for line in content.lines() {
         let trimmed = line.trim_end();
         if trimmed.is_empty() {
             if !last_was_empty {
-                final_lines.push("");
+                res.push('\n');
                 last_was_empty = true;
             }
         } else {
-            final_lines.push(trimmed);
+            if !res.is_empty() {
+                res.push('\n');
+            }
+            res.push_str(trimmed);
             last_was_empty = false;
         }
     }
 
-    // Trim leading/trailing empty lines for cleaner comparison in tests
-    let mut res = final_lines.join("\n");
-    res = res.trim().to_string();
-    res
+    res.trim().to_string()
 }
 
 #[cfg(test)]

@@ -1,31 +1,28 @@
-//! High-level analysis orchestration.
+//! High-level analysis orchestration and parallel file processing.
 
 use crate::{Config, FileReport};
 use ignore::WalkBuilder;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-/// The `AnalysisEngine` orchestrates the collection and analysis of files.
+/// The `AnalysisEngine` orchestrates the collection and parallel analysis of project files.
 pub struct AnalysisEngine {
     root: PathBuf,
     config: Config,
 }
 
 impl AnalysisEngine {
-    /// Creates a new `AnalysisEngine` with the given root path and configuration.
+    /// Creates a new `AnalysisEngine` instance.
     #[must_use]
     pub const fn new(root: PathBuf, config: Config) -> Self {
         Self { root, config }
     }
 
-    /// Collects all supported files within the root directory using parallel discovery.
+    /// Recursively collects all supported files within the root directory.
     ///
-    /// # Panics
-    ///
-    /// Panics if the progress bar style template is invalid.
+    /// Utilizes a parallel walker for high-speed file system discovery.
     #[must_use]
     pub fn collect_files(&self, quiet: bool) -> Vec<PathBuf> {
         let spinner = if quiet {
@@ -47,29 +44,30 @@ impl AnalysisEngine {
             walk_builder.add_ignore(exclude);
         }
 
-        let entries = Arc::new(Mutex::new(Vec::new()));
-        let entries_clone = Arc::clone(&entries);
+        let (tx, rx) = std::sync::mpsc::channel();
 
-        // Parallel walker for extreme discovery speed.
         walk_builder.build_parallel().run(|| {
-            let entries = Arc::clone(&entries_clone);
+            let tx = tx.clone();
             Box::new(move |result| {
                 if let Some(entry) = result.ok().filter(|e| Config::is_supported_file(e.path())) {
-                    let mut e = entries.lock().unwrap();
-                    e.push(entry.path().to_path_buf());
+                    let _ = tx.send(entry.path().to_path_buf());
                 }
                 ignore::WalkState::Continue
             })
         });
 
+        drop(tx);
+
+        let entries: Vec<PathBuf> = rx.into_iter().collect();
+
         if let Some(sp) = spinner {
             sp.finish_and_clear();
         }
 
-        entries.lock().unwrap().clone()
+        entries
     }
 
-    /// Runs the analysis phase in parallel using Rayon.
+    /// Executes the analysis phase in parallel using the Rayon thread pool.
     #[must_use]
     pub fn run(&self, quiet: bool, show_progress: bool) -> Vec<FileReport> {
         let entries = self.collect_files(quiet);
@@ -102,7 +100,7 @@ impl AnalysisEngine {
         reports
     }
 
-    /// Creates a progress bar for the analysis phase.
+    /// Initializes a progress bar for the analysis phase.
     fn create_progress_bar(len: usize, quiet: bool, show_progress: bool) -> Option<ProgressBar> {
         if quiet || !show_progress {
             return None;
@@ -120,7 +118,7 @@ impl AnalysisEngine {
         Some(pb)
     }
 
-    /// Sorts reports by health (Bitter first), issue count, and file size.
+    /// Sorts reports prioritized by "bitterness", issue count, and file volume.
     fn sort_reports(reports: &mut [FileReport]) {
         reports.sort_by(|a, b| {
             b.is_sweet

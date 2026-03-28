@@ -1,7 +1,8 @@
-//! Logic for orchestrating file analysis.
+//! Central orchestration for individual file analysis.
 
 pub mod complexity;
 pub mod engine;
+pub mod ignore;
 pub mod repetition;
 pub mod syntax;
 pub mod uncomment;
@@ -9,27 +10,90 @@ pub mod volume;
 
 pub use engine::AnalysisEngine;
 
+use crate::languages::LanguageRegistry;
 use crate::{Config, FileReport};
+use dashmap::DashMap;
 use memmap2::Mmap;
+use once_cell::sync::Lazy;
 use std::fs::{self, File};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
-/// Analyzes a single file and returns its health metrics.
+/// Thread-safe cache for directory-specific configuration resolution.
+static CONFIG_CACHE: Lazy<DashMap<PathBuf, Config>> = Lazy::new(DashMap::new);
+
+/// Analyzes a single file's health and returns a detailed report.
 ///
-/// Optimized read: uses standard I/O for small files (<16KB)
-/// and memory mapping for larger files.
+/// Employs hierarchical configuration resolution and memory-mapped I/O for large files.
 #[must_use]
-pub fn analyze_file(path: &Path, config: &Config) -> Option<FileReport> {
+pub fn analyze_file(path: &Path, _base_config: &Config) -> Option<FileReport> {
+    let parent = path
+        .parent()
+        .unwrap_or_else(|| Path::new("."))
+        .to_path_buf();
+
+    let config = CONFIG_CACHE
+        .entry(parent.clone())
+        .or_insert_with(|| Config::load(path))
+        .clone();
+
+    if config.is_excluded(path) {
+        return None;
+    }
+
     let extension = path.extension()?.to_str()?;
     let thresholds = config.get_thresholds(extension);
 
-    let content = read_file_optimized(path)?;
+    let metadata = fs::metadata(path).ok()?;
+    let size = metadata.len();
 
-    let lines = volume::count_lines(&content);
-    let imports = syntax::count_imports(&content, extension);
-    let max_depth = complexity::analyze_depth(&content);
+    if size < 16 * 1024 {
+        let content = fs::read_to_string(path).ok()?;
+        if ignore::is_file_ignored(&content) {
+            return None;
+        }
+        Some(analyze_content(
+            &content,
+            extension,
+            &thresholds,
+            path,
+            &config,
+        ))
+    } else {
+        let file = File::open(path).ok()?;
+        let mmap = unsafe { Mmap::map(&file).ok()? };
+        let content = std::str::from_utf8(&mmap).ok()?;
+        if ignore::is_file_ignored(content) {
+            return None;
+        }
+        Some(analyze_content(
+            content,
+            extension,
+            &thresholds,
+            path,
+            &config,
+        ))
+    }
+}
 
-    let clean_content = uncomment::remove_comments(&content, extension, true);
+/// Dispatches content to specialized analyzers and aggregates results.
+fn analyze_content(
+    content: &str,
+    extension: &str,
+    thresholds: &crate::Thresholds,
+    path: &Path,
+    config: &Config,
+) -> FileReport {
+    let registry = LanguageRegistry::get();
+    let indent_size = registry
+        .get_by_extension(extension)
+        .map_or(4, |l| l.indent_size());
+
+    let lines = volume::count_lines(content);
+    let imports = syntax::count_imports(content, extension);
+    let max_depth = complexity::analyze_depth(content, indent_size);
+
+    let clean_content = uncomment::remove_comments(content, extension, true);
+
     let repetition = repetition::analyze_repetition(&clean_content);
 
     let mut issues = Vec::new();
@@ -59,7 +123,7 @@ pub fn analyze_file(path: &Path, config: &Config) -> Option<FileReport> {
         ));
     }
 
-    Some(FileReport {
+    FileReport {
         path: path.to_path_buf(),
         lines,
         imports,
@@ -67,20 +131,6 @@ pub fn analyze_file(path: &Path, config: &Config) -> Option<FileReport> {
         repetition,
         is_sweet: issues.is_empty(),
         issues,
-    })
-}
-
-/// Choose the best reading strategy based on file size.
-fn read_file_optimized(path: &Path) -> Option<String> {
-    let metadata = fs::metadata(path).ok()?;
-    let size = metadata.len();
-
-    // Threshold: 16KB. Below this, standard read is faster.
-    if size < 16 * 1024 {
-        fs::read_to_string(path).ok()
-    } else {
-        let file = File::open(path).ok()?;
-        let mmap = unsafe { Mmap::map(&file).ok()? };
-        std::str::from_utf8(&mmap).ok().map(String::from)
+        config: Some(config.clone()),
     }
 }
