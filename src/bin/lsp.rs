@@ -1,4 +1,3 @@
-use std::path::Path;
 use swt::Config;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
@@ -46,10 +45,11 @@ impl Backend {
         }
 
         for duplicate in report.duplicates {
+            let start_line = (duplicate.line as u32).saturating_sub(1);
             diagnostics.push(Diagnostic {
                 range: Range::new(
-                    Position::new(duplicate.line as u32 - 1, 0),
-                    Position::new(duplicate.line as u32 - 1, 80),
+                    Position::new(start_line, 0),
+                    Position::new(start_line, 80),
                 ),
                 severity: Some(DiagnosticSeverity::HINT),
                 message: format!(
