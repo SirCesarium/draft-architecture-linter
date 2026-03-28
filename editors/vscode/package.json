@@ -13,7 +13,20 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "languages": [],
+    "languages": [
+      {
+        "id": "json",
+        "extensions": [
+          ".swtrc"
+        ]
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": ".swtrc",
+        "url": "https://raw.githubusercontent.com/SirCesarium/sweet/main/schema.json"
+      }
+    ],
     "configuration": {
       "type": "object",
       "title": "Sweet",

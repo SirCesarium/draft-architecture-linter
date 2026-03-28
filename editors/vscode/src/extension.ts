@@ -10,10 +10,17 @@ import {
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
-  // Path to the sweet-lsp binary
-  const serverModule = context.asAbsolutePath(
-    path.join('..', '..', 'target', 'debug', 'sweet-lsp')
+  // Path to the sweet-lsp binary (absolute path is safer)
+  const serverModule = path.resolve(
+    context.extensionPath,
+    '..',
+    '..',
+    'target',
+    'debug',
+    'sweet-lsp'
   );
+
+  console.log(`[Sweet] Searching for LSP binary at: ${serverModule}`);
 
   const serverOptions: ServerOptions = {
     run: {
@@ -47,7 +54,10 @@ export function activate(context: ExtensionContext) {
     clientOptions
   );
 
-  client.start();
+  // Start the client. This will also launch the server
+  client.start().catch((err) => {
+    console.error(`[Sweet] Failed to start LSP client: ${err}`);
+  });
 }
 
 export function deactivate(): Thenable<void> | undefined {

@@ -127,8 +127,7 @@ impl AnalysisEngine {
             let extension = path.extension()?.to_str()?;
             let thresholds = self.config.get_thresholds(extension);
             let clean = super::uncomment::remove_comments(&content, extension, true);
-            let rep_res =
-                repetition::analyze_repetition(&clean, thresholds.min_duplicate_lines);
+            let rep_res = repetition::analyze_repetition(&clean, thresholds.min_duplicate_lines);
 
             let window_size = thresholds.min_duplicate_lines;
             if rep_res.hashes.len() >= window_size {
@@ -141,7 +140,6 @@ impl AnalysisEngine {
                 }
             }
         }
-
 
         Some(ProcessedFile {
             lines: content.lines().map(ToString::to_string).collect(),
