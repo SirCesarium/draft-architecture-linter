@@ -21,6 +21,12 @@ pub struct AnalysisEngine {
     config: Config,
 }
 
+/// Internal structure to hold report and file content during analysis.
+struct ProcessedFile {
+    report: FileReport,
+    lines: Vec<String>,
+}
+
 impl AnalysisEngine {
     #[must_use]
     pub const fn new(root: PathBuf, config: Config) -> Self {
@@ -79,14 +85,14 @@ impl AnalysisEngine {
         let pb = Self::create_progress_bar(entries.len(), quiet, show_progress);
         let global_chunks: Arc<ChunkMap> = Arc::new(DashMap::new());
 
-        let mut reports: Vec<FileReport> = entries
+        let mut processed_files: Vec<ProcessedFile> = entries
             .par_iter()
             .filter_map(|path| {
                 let res = self.analyze_and_collect(path, &global_chunks, inspect);
                 if let Some(ref pb) = pb {
                     pb.inc(1);
                     if let Some(ref r) = res {
-                        pb.set_message(format!("{}", r.path.display()));
+                        pb.set_message(format!("{}", r.report.path.display()));
                     }
                 }
                 res
@@ -98,8 +104,13 @@ impl AnalysisEngine {
         }
 
         if inspect {
-            Self::finalize_inspection(&mut reports, &global_chunks);
+            Self::finalize_inspection(&mut processed_files, &global_chunks);
         }
+
+        let mut reports: Vec<FileReport> = processed_files
+            .into_iter()
+            .map(|pf| pf.report)
+            .collect();
 
         Self::sort_reports(&mut reports);
         reports
@@ -111,9 +122,8 @@ impl AnalysisEngine {
         path: &Path,
         global_chunks: &ChunkMap,
         inspect: bool,
-    ) -> Option<FileReport> {
-        let content = std::fs::read_to_string(path).ok()?;
-        let report = super::analyze_file(path, &self.config)?;
+    ) -> Option<ProcessedFile> {
+        let (report, content) = super::analyze_file(path, &self.config)?;
 
         if inspect {
             let extension = path.extension()?.to_str()?;
@@ -132,36 +142,33 @@ impl AnalysisEngine {
             }
         }
 
-        Some(report)
+        Some(ProcessedFile {
+            lines: content.lines().map(ToString::to_string).collect(),
+            report,
+        })
     }
 
     /// Finalizes the inspection by mapping duplicated chunks back to source files.
-    fn finalize_inspection(reports: &mut [FileReport], global_chunks: &ChunkMap) {
+    fn finalize_inspection(processed_files: &mut [ProcessedFile], global_chunks: &ChunkMap) {
         let duplicates: Duplicates = global_chunks
             .iter()
             .filter(|entry| entry.value().len() > 1)
             .map(|entry| (entry.key().clone(), entry.value().clone()))
             .collect();
 
-        for report in reports {
+        for pf in processed_files {
             for (_, occurrences) in &duplicates {
-                if let Some(pos) = occurrences.iter().find(|(p, _)| p == &report.path)
-                    && let Ok(content) = std::fs::read_to_string(&report.path)
-                {
-                    let lines: Vec<String> = content
-                        .lines()
-                        .map(std::string::ToString::to_string)
-                        .collect();
+                if let Some(pos) = occurrences.iter().find(|(p, _)| p == &pf.report.path) {
                     let start_line = pos.1;
-                    if start_line > 0 && start_line + 3 <= lines.len() {
-                        let snippet = lines[start_line - 1..start_line + 3].join("\n");
+                    if start_line > 0 && start_line + 3 <= pf.lines.len() {
+                        let snippet = pf.lines[start_line - 1..start_line + 3].join("\n");
 
-                        report.duplicates.push(RepetitionDetail {
+                        pf.report.duplicates.push(RepetitionDetail {
                             content: snippet,
                             line: start_line,
                             occurrences: occurrences
                                 .iter()
-                                .filter(|(p, l)| p != &report.path || l != &start_line)
+                                .filter(|(p, l)| p != &pf.report.path || l != &start_line)
                                 .cloned()
                                 .collect(),
                         });

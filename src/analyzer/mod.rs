@@ -25,7 +25,7 @@ static CONFIG_CACHE: LazyLock<DashMap<PathBuf, Config>> = LazyLock::new(DashMap:
 ///
 /// Employs hierarchical configuration resolution and memory-mapped I/O for large files.
 #[must_use]
-pub fn analyze_file(path: &Path, _base_config: &Config) -> Option<FileReport> {
+pub fn analyze_file(path: &Path, _base_config: &Config) -> Option<(FileReport, String)> {
     let parent = path
         .parent()
         .unwrap_or_else(|| Path::new("."))
@@ -46,33 +46,20 @@ pub fn analyze_file(path: &Path, _base_config: &Config) -> Option<FileReport> {
     let metadata = fs::metadata(path).ok()?;
     let size = metadata.len();
 
-    if size < 16 * 1024 {
-        let content = fs::read_to_string(path).ok()?;
-        if ignore::is_file_ignored(&content) {
-            return None;
-        }
-        Some(analyze_content(
-            &content,
-            extension,
-            &thresholds,
-            path,
-            &config,
-        ))
+    let content = if size < 16 * 1024 {
+        fs::read_to_string(path).ok()?
     } else {
         let file = File::open(path).ok()?;
         let mmap = unsafe { Mmap::map(&file).ok()? };
-        let content = std::str::from_utf8(&mmap).ok()?;
-        if ignore::is_file_ignored(content) {
-            return None;
-        }
-        Some(analyze_content(
-            content,
-            extension,
-            &thresholds,
-            path,
-            &config,
-        ))
+        std::str::from_utf8(&mmap).ok()?.to_string()
+    };
+
+    if ignore::is_file_ignored(&content) {
+        return None;
     }
+
+    let report = analyze_content(&content, extension, &thresholds, path, &config);
+    Some((report, content))
 }
 
 /// Dispatches content to specialized analyzers and aggregates results.
