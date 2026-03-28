@@ -22,15 +22,11 @@ pub struct AnalysisEngine {
 }
 
 impl AnalysisEngine {
-    /// Creates a new `AnalysisEngine` instance.
     #[must_use]
     pub const fn new(root: PathBuf, config: Config) -> Self {
         Self { root, config }
     }
 
-    /// Recursively collects all supported files within the root directory.
-    ///
-    /// Utilizes a parallel walker for high-speed file system discovery.
     #[must_use]
     pub fn collect_files(&self, quiet: bool) -> Vec<PathBuf> {
         let spinner = if quiet {
@@ -193,10 +189,12 @@ impl AnalysisEngine {
 
     fn sort_reports(reports: &mut [FileReport]) {
         reports.sort_by(|a, b| {
-            b.is_sweet
-                .cmp(&a.is_sweet)
-                .then_with(|| b.issues.len().cmp(&a.issues.len()))
-                .then_with(|| b.lines.cmp(&a.lines))
+            b.is_sweet.cmp(&a.is_sweet).then_with(|| {
+                b.issues
+                    .len()
+                    .cmp(&a.issues.len())
+                    .then_with(|| b.lines.cmp(&a.lines))
+            })
         });
     }
 }
