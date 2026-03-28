@@ -32,7 +32,7 @@ pub fn analyze_file(path: &Path, _base_config: &Config) -> Option<FileReport> {
         .to_path_buf();
 
     let config = CONFIG_CACHE
-        .entry(parent.clone())
+        .entry(parent)
         .or_insert_with(|| Config::load(path))
         .clone();
 
