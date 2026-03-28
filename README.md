@@ -23,7 +23,7 @@
 
 ## ✨ Key Features
 
-- **🚀 Blazing Fast:** Process thousands of files in milliseconds using parallel execution.
+- **🚀 Blazing Fast:** Process thousands of files in milliseconds (e.g., self-analysis in <10ms).
 - **📁 Hierarchical Config:** Support for multiple `.swtrc` files to define specific rules for different subdirectories.
 - **🔍 Global Inspection:** Detect code duplication across the entire project with detailed reporting.
 - **🛡️ Quality Guard:** Built-in support for git hooks to prevent "Bitter" code from being pushed.
