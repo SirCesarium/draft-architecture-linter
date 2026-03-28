@@ -1,10 +1,22 @@
 #!/bin/bash
 set -e
 
-echo "🔍 Running pre-push checks..."
+echo "🔍 Running pre-push checks (Comprehensive)..."
 
+# 1. Format Check
+echo "  ↳ Checking code formatting..."
 cargo fmt -- --check
-cargo clippy -- -D warnings
+
+# 2. Comprehensive Clippy Check (All features, All targets)
+echo "  ↳ Running Clippy (All features & targets)..."
+cargo clippy --all-targets --all-features -- -D warnings
+
+# 3. Project tests
+echo "  ↳ Running project tests..."
+cargo test --all-features
+
+# 4. Smoke test on self
+echo "  ↳ Running self-analysis smoke test..."
 cargo run -- . --quiet
 
 echo "✅ Quality checks passed."

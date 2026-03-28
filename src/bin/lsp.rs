@@ -30,7 +30,8 @@ impl Backend {
             .unwrap_or_default();
         let thresholds = config.get_thresholds(extension);
 
-        let report = swt::analyzer::analyze_content(content, extension, &thresholds, &path, &config);
+        let report =
+            swt::analyzer::analyze_content(content, extension, &thresholds, &path, &config);
 
         let mut diagnostics = Vec::new();
 
@@ -47,10 +48,7 @@ impl Backend {
         for duplicate in report.duplicates {
             let start_line = (duplicate.line as u32).saturating_sub(1);
             diagnostics.push(Diagnostic {
-                range: Range::new(
-                    Position::new(start_line, 0),
-                    Position::new(start_line, 80),
-                ),
+                range: Range::new(Position::new(start_line, 0), Position::new(start_line, 80)),
                 severity: Some(DiagnosticSeverity::HINT),
                 message: format!(
                     "🍬 Sweet: Code duplication detected! (repeated in {} other places)",
@@ -104,6 +102,15 @@ impl LanguageServer for Backend {
     }
 }
 
+#[tokio::main]
+async fn main() {
+    let stdin = tokio::io::stdin();
+    let stdout = tokio::io::stdout();
+
+    let (service, socket) = LspService::new(|client| Backend { client });
+    Server::new(stdin, stdout, socket).serve(service).await;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,13 +131,4 @@ mod tests {
         // Should not panic or return error, just skip
         service.inner().validate_document(uri, "test").await;
     }
-}
-
-#[tokio::main]
-async fn main() {
-    let stdin = tokio::io::stdin();
-    let stdout = tokio::io::stdout();
-
-    let (service, socket) = LspService::new(|client| Backend { client });
-    Server::new(stdin, stdout, socket).serve(service).await;
 }
