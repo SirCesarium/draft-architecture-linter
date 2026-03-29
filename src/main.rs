@@ -2,7 +2,7 @@
 
 #![deny(clippy::pedantic)]
 
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use console::style;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -19,6 +19,10 @@ const ASCII: &str = r"
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]
 struct Args {
+    /// Subcommand to execute.
+    #[command(subcommand)]
+    command: Option<Commands>,
+
     /// Path to analyze (default: current directory).
     #[arg(default_value = ".")]
     path: PathBuf,
@@ -43,18 +47,20 @@ struct Args {
     /// inspect and show detailed code duplication/repetition.
     #[arg(long)]
     inspect: bool,
+}
 
+#[derive(Subcommand, Debug)]
+enum Commands {
     /// Check for updates and install if available.
-    #[arg(long)]
-    update: bool,
+    Update,
 }
 
 fn main() -> std::process::ExitCode {
     let args = Args::parse();
 
-    if args.update {
+    if let Some(Commands::Update) = args.command {
         return match handle_update() {
-            Ok(_) => std::process::ExitCode::SUCCESS,
+            Ok(()) => std::process::ExitCode::SUCCESS,
             Err(_) => std::process::ExitCode::FAILURE,
         };
     }
@@ -140,28 +146,28 @@ fn check_for_updates() {
         .repo_name("sweet")
         .build();
 
-    if let Ok(releases) = releases {
-        if let Ok(latest) = releases.fetch() {
-            if let Some(latest_release) = latest.first() {
-                if self_update::version::bump_is_greater(current_version, &latest_release.version)
-                    .unwrap_or(false)
-                {
-                    println!(
-                        "\n{}",
-                        style(format!(
-                            " 🚀 A new version of Sweet is available: v{} (current: v{})",
-                            latest_release.version, current_version
-                        ))
-                        .yellow()
-                        .bold()
-                    );
-                    println!(
-                        "    Run {} to update.\n",
-                        style("swt --update").cyan().italic()
-                    );
-                }
-            }
-        }
+    if let Some(latest_release) = releases
+        .and_then(self_update::backends::github::ReleaseList::fetch)
+        .ok()
+        .and_then(|latest| {
+            latest.into_iter().find(|r| {
+                self_update::version::bump_is_greater(current_version, &r.version).unwrap_or(false)
+            })
+        })
+    {
+        println!(
+            "\n{}",
+            style(format!(
+                " 🚀 A new version of Sweet is available: v{} (current: v{})",
+                latest_release.version, current_version
+            ))
+            .yellow()
+            .bold()
+        );
+        println!(
+            "    Run {} to update.\n",
+            style("swt update").cyan().italic()
+        );
     }
 }
 
