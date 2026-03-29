@@ -89,6 +89,11 @@ pub fn analyze_content<S: std::hash::BuildHasher>(
     let lines = volume::count_lines(content);
     let imports = syntax::count_imports(content, extension);
     let max_depth = complexity::analyze_depth(content, indent_size);
+    let deep_lines = if disabled_rules.contains("max-depth") {
+        Vec::new()
+    } else {
+        complexity::find_deep_lines(content, indent_size, thresholds.max_depth)
+    };
 
     let clean_content = uncomment::remove_comments(content, extension, true);
     let rep_res = repetition::analyze_repetition(&clean_content, thresholds.min_duplicate_lines);
@@ -121,6 +126,40 @@ pub fn analyze_content<S: std::hash::BuildHasher>(
         ));
     }
 
+    let mut duplicates = Vec::new();
+    let window_size = thresholds.min_duplicate_lines;
+
+    if !disabled_rules.contains("max-repetition") && rep_res.hashes.len() >= window_size {
+        let mut chunks: std::collections::HashMap<Vec<u64>, Vec<usize>> =
+            std::collections::HashMap::new();
+        for i in 0..=rep_res.hashes.len() - window_size {
+            let chunk = rep_res.hashes[i..i + window_size].to_vec();
+            chunks.entry(chunk).or_default().push(i + 1);
+        }
+
+        let content_lines: Vec<&str> = content.lines().collect();
+        for positions in chunks.values() {
+            if positions.len() > 1 {
+                for &pos in positions {
+                    let others: Vec<(std::path::PathBuf, usize)> = positions
+                        .iter()
+                        .filter(|&&p| p != pos)
+                        .map(|&p| (path.to_path_buf(), p))
+                        .collect();
+
+                    if pos > 0 && pos + window_size <= content_lines.len() {
+                        let snippet = content_lines[pos - 1..pos - 1 + window_size].join("\n");
+                        duplicates.push(crate::RepetitionDetail {
+                            content: snippet,
+                            line: pos,
+                            occurrences: others,
+                        });
+                    }
+                }
+            }
+        }
+    }
+
     FileReport {
         path: path.to_path_buf(),
         lines,
@@ -130,6 +169,7 @@ pub fn analyze_content<S: std::hash::BuildHasher>(
         is_sweet: issues.is_empty(),
         issues,
         config: Some(config.clone()),
-        duplicates: Vec::new(),
+        duplicates,
+        deep_lines,
     }
 }

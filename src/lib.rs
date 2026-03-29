@@ -41,6 +41,8 @@ pub struct FileReport {
     pub config: Option<Config>,
     /// Details about duplicated code chunks.
     pub duplicates: Vec<RepetitionDetail>,
+    /// Lines where the nesting depth exceeds the threshold.
+    pub deep_lines: Vec<(usize, usize)>,
 }
 
 /// Details about a specific duplicated code chunk.

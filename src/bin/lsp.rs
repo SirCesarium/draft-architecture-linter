@@ -3,9 +3,11 @@
 use swt::Config;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
-    Diagnostic, DiagnosticSeverity, DidChangeTextDocumentParams, DidOpenTextDocumentParams,
-    InitializeParams, InitializeResult, InitializedParams, MessageType, Position, Range,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, Url,
+    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams, CodeActionResponse,
+    Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DidChangeTextDocumentParams,
+    DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams, Location,
+    MessageType, Position, Range, ServerCapabilities, TextDocumentSyncCapability,
+    TextDocumentSyncKind, TextEdit, Url, WorkspaceEdit,
 };
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
@@ -44,11 +46,37 @@ impl Backend {
         let mut diagnostics = Vec::new();
 
         for issue in report.issues {
+            let rule = if issue.contains("File too long") {
+                "max-lines"
+            } else if issue.contains("Too many imports") {
+                "max-imports"
+            } else if issue.contains("Excessive nesting") {
+                "max-depth"
+            } else if issue.contains("repetition") {
+                "max-repetition"
+            } else {
+                "unknown"
+            };
+
             diagnostics.push(Diagnostic {
                 range: Range::new(Position::new(0, 0), Position::new(0, 80)),
                 severity: Some(DiagnosticSeverity::WARNING),
                 message: format!("🍬 Sweet: {issue}"),
                 source: Some("sweet".to_string()),
+                data: Some(serde_json::to_value(rule).unwrap_or_default()),
+                ..Default::default()
+            });
+        }
+
+        for (line, depth) in report.deep_lines {
+            #[allow(clippy::cast_possible_truncation)]
+            let l = (line as u32).saturating_sub(1);
+            diagnostics.push(Diagnostic {
+                range: Range::new(Position::new(l, 0), Position::new(l, 80)),
+                severity: Some(DiagnosticSeverity::WARNING),
+                message: format!("🍬 Sweet: Excessive nesting depth: {depth}"),
+                source: Some("sweet".to_string()),
+                data: Some(serde_json::to_value("max-depth").unwrap_or_default()),
                 ..Default::default()
             });
         }
@@ -56,14 +84,35 @@ impl Backend {
         for duplicate in report.duplicates {
             #[allow(clippy::cast_possible_truncation)]
             let start_line = (duplicate.line as u32).saturating_sub(1);
+            #[allow(clippy::cast_possible_truncation)]
+            let line_count = duplicate.content.lines().count() as u32;
+            let end_line = start_line + line_count.saturating_sub(1);
+
+            let mut related_information = Vec::new();
+            for (other_path, other_line) in &duplicate.occurrences {
+                if let Ok(other_uri) = Url::from_file_path(other_path) {
+                    #[allow(clippy::cast_possible_truncation)]
+                    let l = (*other_line as u32).saturating_sub(1);
+                    related_information.push(DiagnosticRelatedInformation {
+                        location: Location::new(
+                            other_uri,
+                            Range::new(Position::new(l, 0), Position::new(l, 80)),
+                        ),
+                        message: format!("Duplicate found here (line {other_line})"),
+                    });
+                }
+            }
+
             diagnostics.push(Diagnostic {
-                range: Range::new(Position::new(start_line, 0), Position::new(start_line, 80)),
-                severity: Some(DiagnosticSeverity::HINT),
+                range: Range::new(Position::new(start_line, 0), Position::new(end_line, 80)),
+                severity: Some(DiagnosticSeverity::WARNING),
                 message: format!(
                     "🍬 Sweet: Code duplication detected! (repeated in {} other places)",
                     duplicate.occurrences.len()
                 ),
                 source: Some("sweet".to_string()),
+                related_information: Some(related_information),
+                data: Some(serde_json::to_value("max-repetition").unwrap_or_default()),
                 ..Default::default()
             });
         }
@@ -82,6 +131,9 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
+                code_action_provider: Some(
+                    tower_lsp::lsp_types::CodeActionProviderCapability::Simple(true),
+                ),
                 ..Default::default()
             },
             ..Default::default()
@@ -104,6 +156,54 @@ impl LanguageServer for Backend {
             self.validate_document(params.text_document.uri, &change.text)
                 .await;
         }
+    }
+
+    async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        let mut actions = Vec::new();
+
+        let Ok(path) = params.text_document.uri.to_file_path() else {
+            return Ok(None);
+        };
+
+        let extension = path
+            .extension()
+            .and_then(|e| e.to_str())
+            .unwrap_or_default();
+        let registry = swt::languages::LanguageRegistry::get();
+        let comment = registry
+            .get_by_extension(extension)
+            .and_then(swt::languages::Language::line_comment)
+            .unwrap_or("//");
+
+        for diagnostic in params.context.diagnostics {
+            if let Some(rule) = diagnostic.data.as_ref().and_then(|v| v.as_str()) {
+                if rule == "unknown" {
+                    continue;
+                }
+
+                let title = format!("🍬 Disable rule '{rule}' for this file");
+                let edit = TextEdit::new(
+                    Range::new(Position::new(0, 0), Position::new(0, 0)),
+                    format!("{comment} @swt-disable {rule}\n"),
+                );
+
+                let mut changes = std::collections::HashMap::new();
+                changes.insert(params.text_document.uri.clone(), vec![edit]);
+
+                actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+                    title,
+                    kind: Some(CodeActionKind::QUICKFIX),
+                    edit: Some(WorkspaceEdit {
+                        changes: Some(changes),
+                        ..Default::default()
+                    }),
+                    diagnostics: Some(vec![diagnostic]),
+                    ..Default::default()
+                }));
+            }
+        }
+
+        Ok(Some(actions))
     }
 
     async fn shutdown(&self) -> Result<()> {
