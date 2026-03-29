@@ -8,61 +8,47 @@
 <strong>Real-time code health alerts for professional developers.</strong>
 </p>
 
-`Sweet` is a blazing-fast code health analyzer designed to keep project architectures lean and sustainable. It identifies technical debt, tangled dependencies, and complex logic patterns.
+`Sweet` is a blazing-fast code health analyzer designed to keep project architectures lean and sustainable. It is **plug-and-play**: it works immediately with zero configuration using intelligent defaults, while offering the flexibility to enforce stricter standards via `.swtrc` files.
 
 -----
 
 ## 🍬 Features
 
-  - **File Size Guardian:** Get immediate warnings when a file exceeds your defined line limit. Keep your modules focused and atomic.
-
-  - **Import Overload Detection:** Automatically identifies when a file has too many dependencies, signaling a potential violation of the `Single Responsibility Principle`.
-
-  - **Deep Integration:** Create a `.swtrc` configuration. It respects your hierarchical rules and custom thresholds.
-
-  - **Lightweight:** Built in Rust-powered logic to ensure zero lag in your typing experience.
+  - **Structural Guard:** Real-time analysis of file weight and logic density.
+  - **Logical Highlighting:** Immediate visual feedback for excessive nesting and cognitive complexity.
+  - **Repetition Alerts:** Identifies duplicated code blocks with links to other occurrences.
+  - **Quick Fix Integration:** Use `Ctrl+.` to granularly disable rules for specific files via `@swt-disable`.
+  - **Deep Integration:** Full support for hierarchical `.swtrc` configuration files.
+  - **Zero Latency:** Rust-powered core ensures a smooth typing experience without editor lag.
 
 -----
 
 ## 🍭 How it works
 
-The extension monitors your active editor and triggers **VSCode Warnings** (yellow squiggles) when:
+The extension provides live structural diagnostics through **VS Code Warnings** (yellow squiggles) for:
 
-1.  The **Line Count** exceeds your threshold (Default: 250 lines).
-2.  The **Import Count** is too high for the specific language (e.g., \>15 imports in Rust).
-
-This extension currently focuses on **real-time structural health**.
-
-For deep metrics like **code duplication (Copy-Paste detection)** and global project analysis, please take a look at [Sweet (CLI)](https://github.com/SirCesarium/sweet).
-
------
-
-## 🍬 Global Metrics & Duplication
-
-The VSCode extension is designed for *local* file health. To get the full picture of your project's technical debt, use `swt` in your terminal or CI:
-
-```bash
-# Detect duplicated code across the entire project
-swt . --inspect
-```
-
-**Want to automate this?** Check out [Refinery-RS](https://github.com/SirCesarium/refinery-rs) to integrate these metrics directly into your GitHub Pull Requests.
+1.  **File Bloat:** Total line count exceeds thresholds.
+2.  **God Functions:** High average lines-per-function (Single Responsibility Principle).
+3.  **Logical Depth:** Deeply nested control flow (cognitive complexity).
+4.  **Tangled Coupling:** Excessive import/dependency statements.
+5.  **Local Repetition:** Duplicated logic within the same file.
 
 -----
 
 ## ⚙️ Configuration
 
-`Sweet` will automatically look for a `.swtrc` file in your workspace root. If none is found, it uses these sensible defaults:
+`Sweet` automatically detects `.swtrc` files in your workspace. If absent, it applies intelligent defaults tuned for each supported language (Rust, Python, GDScript, Lua, etc.).
 
 ```json
 {
   "thresholds": {
     "global": { 
-      "max_lines": 250
+      "max_lines": 400,
+      "max_lines_per_function": 200
     },
     "overrides": {
-      "rust": { "max_imports": 15 },
-      "typescript": { "max_imports": 20 }
+      "rust": { "max_imports": 30 },
+      "gdscript": { "max_depth": 7 }
     }
   }
 }

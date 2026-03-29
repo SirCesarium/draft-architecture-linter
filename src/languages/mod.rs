@@ -23,6 +23,9 @@ pub trait Language: Send + Sync {
     /// Keywords used to declare imports or dependencies.
     fn import_keywords(&self) -> &'static [&'static str];
 
+    /// Keywords or patterns that identify a function/method declaration.
+    fn function_keywords(&self) -> &'static [&'static str];
+
     /// Number of spaces representing one level of indentation.
     fn indent_size(&self) -> usize {
         4
@@ -33,8 +36,38 @@ pub trait Language: Send + Sync {
         crate::Thresholds::default()
     }
 
-    /// Keywords or patterns that identify a function/method declaration.
-    fn function_keywords(&self) -> &'static [&'static str];
+    /// Counts the number of imports in the content using the language's specific logic.
+    fn count_imports(&self, content: &str) -> usize {
+        let keywords = self.import_keywords();
+        content
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim_start();
+                if trimmed.is_empty() {
+                    return false;
+                }
+                keywords.iter().any(|&kw| {
+                    if kw.ends_with('(') || kw.ends_with('"') {
+                        trimmed.contains(kw)
+                    } else {
+                        trimmed.starts_with(kw)
+                    }
+                })
+            })
+            .count()
+    }
+
+    /// Counts the number of functions in the content using the language's specific logic.
+    fn count_functions(&self, content: &str) -> usize {
+        let keywords = self.function_keywords();
+        content
+            .lines()
+            .filter(|line| {
+                let trimmed = line.trim_start();
+                keywords.iter().any(|&kw| trimmed.starts_with(kw))
+            })
+            .count()
+    }
 }
 
 /// Thread-safe registry for managing supported languages.

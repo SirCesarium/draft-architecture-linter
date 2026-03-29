@@ -10,15 +10,7 @@ pub fn count_functions(content: &str, extension: &str) -> usize {
         return 0;
     };
 
-    let keywords = lang.function_keywords();
-
-    content
-        .lines()
-        .filter(|line| {
-            let trimmed = line.trim_start();
-            keywords.iter().any(|&kw| trimmed.starts_with(kw))
-        })
-        .count()
+    lang.count_functions(content)
 }
 
 #[cfg(test)]

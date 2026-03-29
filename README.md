@@ -11,24 +11,39 @@
 <h1 align="center">🍬 Sweet (swt)</h1>
 
 <p align="center">
-  <strong>Turn code maintainability into a measurable metric.</strong>
+  <strong>The quality gate for sustainable software architecture.</strong>
 </p>
 
-`Sweet` is a blazing-fast code health analyzer designed to keep project architectures lean and sustainable. It identifies technical debt, tangled dependencies, and complex logic patterns.
+`Sweet` is a high-performance code health analyzer designed to enforce architectural integrity. It is **plug-and-play**: it works immediately with zero configuration using intelligent defaults, while offering the flexibility to enforce stricter standards via `.swtrc` files. By quantifying technical debt and identifying complex logic patterns, it helps teams adhere to core engineering principles like **SRP** (Single Responsibility Principle) and **DRY** (Don't Repeat Yourself).
+
+## 🍬 Why Sweet?
+
+Most linters focus on syntax; `Sweet` focuses on **maintainability**. It acts as a surgical tool to prevent the "Big Ball of Mud" anti-pattern by monitoring the physical and logical weight of your components.
+
+*   **Enforce SRP:** Identify "God Functions" and bloated files that take on too many responsibilities.
+*   **Encourage Decoupling:** Track dependency density to prevent tangled, hard-to-test modules.
+*   **Prevent Logic Bloat:** Detect deep nesting and cognitive complexity before they become technical debt.
+*   **Eliminate Redundancy:** Project-wide inspection to find duplicated logic that should be abstract or shared.
 
 ## 🍬 Metrics
 
-| Status | Meaning | Action |
+`Sweet` evaluates code health through four primary lenses of maintainability:
+
+| Metric | Goal | Engineering Impact |
 | :--- | :--- | :--- |
-| **Sweet** 🍭 | Balanced, cohesive, and easy to maintain. | Keep it up! |
-| **Bitter** 🍋 | Overly complex, high coupling, or high repetition. | Refactor recommended. |
+| **Physical Weight** | `max_lines` | Prevents bloated files and encourages decomposition. |
+| **Logic Density** | `max_lines_per_function` | Enforces **SRP** by identifying "God Functions" that do too much. |
+| **Control Flow** | `max_depth` | Flags excessive nesting to keep logic readable and testable. |
+| **Coupling** | `max_imports` | Monitors dependency growth to prevent tangled architectures. |
+| **Repetition** | `max_repetition` | Identifies violations of the **DRY** principle. |
 
 ## 🍬 Features
 
-- **Blazing Fast:** Process thousands of files in milliseconds (e.g., self-analysis in <10ms).
-- **Hierarchical Config:** Support for multiple `.swtrc` files to define specific rules for different subdirectories.
-- **Global Inspection:** Detect code duplication across the entire project with detailed reporting.
-- **Quality Guard:** Built-in support for git hooks to prevent "Bitter" code from being pushed.
+- **Blazing Fast:** Process thousands of files in milliseconds (self-analysis in <10ms).
+- **Hierarchical Config:** Cascading `.swtrc` files for directory-specific rule sets.
+- **Global Inspection:** Project-wide duplicate detection with detailed occurrence mapping.
+- **Intelligent Defaults:** Language-specific thresholds tuned for different ecosystems (e.g., higher line limits for Java/C# vs. Rust).
+- **Quality Guard:** Native support for pre-push hooks to block "Bitter" code from reaching production.
 
 ### 🍭 Supported Languages
 
@@ -139,39 +154,39 @@ jobs:
 
 ## ⚙️ Configuration
 
-`Sweet` resolves `.swtrc` files hierarchically.
+`Sweet` resolves `.swtrc` files hierarchically, merging configurations from the file's directory up to the root.
 
 ```json
 {
   "$schema": "https://raw.githubusercontent.com/SirCesarium/sweet/main/schema.json",
   "thresholds": {
     "global": { 
-      "max_lines": 250, 
-      "max_depth": 5, 
-      "max_repetition": 10.0,
-      "min_duplicate_lines": 4
+      "max_lines": 400, 
+      "max_depth": 6, 
+      "max_repetition": 15.0,
+      "max_lines_per_function": 200
     },
     "overrides": {
-      "rust": { "max_imports": 15 }
+      "rust": { "max_imports": 30 },
+      "gdscript": { "max_depth": 7 }
     }
   }
 }
 ```
 
-### 🍭 In-file Disabling
+### 🍭 In-file Control
 
-You can disable specific rules for a single file using comments. This is useful for large legacy files or generated code.
+You can granularly disable specific checks for a single file using comments in the first 20 lines. This is ideal for legacy codebases or generated assets.
 
-Add a comment like `@swt-disable <rule1> <rule2>` in the first 20 lines of your file:
+Add `@swt-disable <rule1> <rule2>`:
 
 ```rust
 // @swt-disable max-lines max-repetition
-// Your code here...
 ```
 
-Supported rules: `max-lines`, `max-depth`, `max-imports`, `max-repetition`.
+**Supported rules:** `max-lines`, `max-depth`, `max-imports`, `max-repetition`, `max-lines-per-function`.
 
-To ignore a file entirely, use `@sweetignore`.
+To ignore a file entirely, use the `@sweetignore` directive.
 
 ## 🤝 Contributing
 

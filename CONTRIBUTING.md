@@ -1,109 +1,99 @@
 # 🍬 Contributing to Sweet
 
-Thank you for your interest in improving Sweet! This guide will help you understand the project structure and how to contribute effectively, specifically when adding support for new programming languages.
+Thank you for your interest in improving Sweet! This guide provides technical specifications for contributing to the core engine and adding support for new programming languages.
 
 ---
 
 ## 🏗️ Project Structure
 
 - **`src/`**: The Rust core.
-  - **`analyzer/`**: Logic for metrics (complexity, repetition, etc.).
-  - **`languages/`**: Language definitions and registry.
-  - **`config/`**: Configuration resolution and thresholds.
+  - **`analyzer/`**: Logic for metrics (complexity, repetition, functions, etc.).
+  - **`languages/`**: Language definitions and the Strategy Pattern registry.
+  - **`config/`**: Configuration resolution and hierarchical threshold merging.
   - **`bin/lsp.rs`**: The Language Server Protocol implementation.
-  - **`main.rs`**: The `swt` CLI entry point.
-- **`editors/vscode/`**: The Visual Studio Code extension (TypeScript).
-- **`schema.json`**: The JSON schema for `.swtrc` (auto-generated).
+  - **`main.rs`**: CLI entry point.
+- **`editors/vscode/`**: VS Code extension (TypeScript).
+- **`schema.json`**: Auto-generated JSON schema for `.swtrc` validation.
 
 ---
 
 ## 🚀 Adding a New Language
 
-To add support for a new language (e.g., **JavaScript**), follow these steps:
+Sweet uses the **Strategy Pattern** to handle language-specific rules. To add support for a new language (e.g., **Go**), follow these steps:
 
-### 1. Define the Language Rules
-Create a new file in `src/languages/definitions/`. For example, `src/languages/definitions/javascript.rs`:
+### 1. Define the Language Strategy
+Create a new file in `src/languages/definitions/go.rs`:
 
 ```rust
 use crate::languages::Language;
 
-pub struct JavaScript;
+pub struct Go;
 
-impl Language for JavaScript {
-    fn name(&self) -> &'static str { "JavaScript" }
-    fn extensions(&self) -> &'static [&'static str] { &["js", "mjs", "cjs"] }
-    fn import_keywords(&self) -> &'static [&'static str] { &["import", "require"] }
-    fn line_comment_prefix(&self) -> &'static str { "//" }
-    fn block_comment_delimiters(&self) -> (&'static str, &'static str) { ("/*", "*/") }
-    fn indent_size(&self) -> usize { 2 }
+impl Language for Go {
+    fn name(&self) -> &'static str { "Go" }
+    fn extensions(&self) -> &'static [&'static str] { &["go"] }
+    fn line_comment(&self) -> Option<&'static str> { Some("//") }
+    fn block_comment(&self) -> Option<(&'static str, &'static str)> { Some(("/*", "*/")) }
+    fn import_keywords(&self) -> &'static [&'static str] { &["import"] }
+    fn function_keywords(&self) -> &'static [&'static str] { &["func "] }
+    
+    // Default thresholds for Go (optional override)
+    fn default_thresholds(&self) -> crate::Thresholds {
+        crate::Thresholds {
+            max_lines: 400,
+            max_imports: 20,
+            ..Default::default()
+        }
+    }
 }
 ```
 
-### 2. Register the Language
-1.  Add the module to `src/languages/definitions/mod.rs`:
-    ```rust
-    pub mod javascript;
-    ```
-2.  Register it in the `LanguageRegistry` in `src/languages/mod.rs`:
-    ```rust
-    // Inside LanguageRegistry::new()
-    let mut languages: Vec<Box<dyn Language>> = vec![
-        // ...
-        Box::new(definitions::javascript::JavaScript),
-    ];
-    ```
+### 2. Handling Complex Syntax (e.g., Block Imports)
+If a language has non-standard syntax that the default keyword-based counter cannot handle, you can override the trait methods directly.
 
-### 3. Update Configuration Autocomplete
-To enable autocompletion for the new language in `.swtrc` files:
+For example, Go's `import (...)` blocks:
 
-1.  Open `src/config/thresholds.rs`.
-2.  Add the language to the `ThresholdsOverrides` struct:
-    ```rust
-    pub struct ThresholdsOverrides {
-        // ...
-        pub js: Option<PartialThresholds>, // Matches the field name in JSON
-        #[serde(flatten)]
-        pub custom: HashMap<String, PartialThresholds>,
+```rust
+impl Language for Go {
+    // ...
+    fn count_imports(&self, content: &str) -> usize {
+        // Implement custom logic to count package declarations 
+        // inside both single-line and block imports.
+        let mut count = 0;
+        let mut in_block = false;
+        for line in content.lines() {
+            let trimmed = line.trim();
+            if trimmed.starts_with("import (") { in_block = true; continue; }
+            if in_block && trimmed == ")" { in_block = false; continue; }
+            if in_block && !trimmed.is_empty() { count += 1; }
+            if !in_block && trimmed.starts_with("import \"") { count += 1; }
+        }
+        count
     }
-    ```
-3.  Update the `get()` and `extend()` methods in the same file to handle the new field.
-
-### 4. Update the VS Code Extension
-1.  **`package.json`**: Add the language to `activationEvents`:
-    ```json
-    "activationEvents": [
-      "onLanguage:javascript",
-      // ...
-    ]
-    ```
-2.  **`src/extension.ts`**: Add the language to the `documentSelector`:
-    ```typescript
-    documentSelector: [
-      { scheme: 'file', language: 'javascript' },
-      // ...
-    ]
-    ```
-
-### 5. Finalize and Verify
-Run the build-all script to regenerate the schema and verify the changes:
-
-```bash
-./build-all.sh
+}
 ```
 
-- Update the **Supported Languages** table in `README.md`.
-- Ensure all tests pass.
+### 3. Registration
+1.  **Definitions**: Add `pub mod go;` to `src/languages/definitions/mod.rs`.
+2.  **Registry**: Add `Box::new(definitions::go::Go)` to `LanguageRegistry::new()` in `src/languages/mod.rs`.
+3.  **Config**: Add the extension (`go`) to `ThresholdsOverrides` in `src/config/thresholds.rs` and update its `get()` and `extend()` methods.
+
+### 4. VS Code Integration
+1.  **`package.json`**: Add the language to `activationEvents` and the `languages` contribution point.
+2.  **`extension.ts`**: Add the language ID to the `supportedLanguages` array.
 
 ---
 
-## 🧪 Testing
+## 🧪 Quality Standards
 
-We value high-quality code. Ensure that:
-- All Rust tests pass: `cargo test --all-features`.
-- Clippy is happy: `cargo clippy --all-targets --all-features -- -D warnings`.
-- Code is formatted: `cargo fmt -- --check`.
+We enforce strict engineering standards to keep Sweet "Sweet":
 
-The `./hooks/pre-push` script runs these checks automatically. Please run it before submitting a Pull Request.
+- **No Panics**: Use `Result` and `Option` handling. Avoid `unwrap()` or `expect()` in production code (enforced by Clippy).
+- **Performance**: Analysis must remain O(n). Avoid complex regex in hot paths; prefer string slices and iterators.
+- **Validation**: Run `./hooks/pre-push` before submitting. It executes:
+  - `cargo fmt --all -- --check`
+  - `cargo clippy --all-targets --all-features -- -D warnings`
+  - `cargo test --all-features`
 
 ---
 
