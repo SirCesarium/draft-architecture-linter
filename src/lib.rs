@@ -15,6 +15,7 @@ pub mod config;
 pub mod errors;
 pub mod languages;
 pub mod report;
+pub mod update;
 
 // Re-export core configuration types for easier access.
 pub use config::Config;
