@@ -54,7 +54,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: 🛠️ Refinery Build
+      - name: 🛠️ Build CLI (swt)
         uses: sircesarium/refinery-rs@v2.0
         with:
           target: ${{ matrix.target }}
@@ -62,7 +62,16 @@ jobs:
           use-cross: ${{ matrix.use_cross || false }}
           export-libs: false
 
-      - name: 📦 Upload to Bridge
+      - name: 🛠️ Build LSP (sweet-lsp)
+        uses: sircesarium/refinery-rs@v2.0
+        with:
+          target: ${{ matrix.target }}
+          binary-name: "sweet-lsp"
+          features: "lsp"
+          use-cross: ${{ matrix.use_cross || false }}
+          export-libs: false
+
+      - name: 📦 Upload Artifacts
         uses: actions/upload-artifact@v5
         with:
           name: bin-${{ matrix.target }}

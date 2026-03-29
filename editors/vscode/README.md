@@ -8,7 +8,7 @@
 <strong>Real-time code health alerts for professional developers.</strong>
 </p>
 
-`Sweet` for VSCode brings the power of the **Sweet Index** directly into your editor. It alerts at the moment your code starts becoming "Bitter" and hard to maintain.
+`Sweet` is a blazing-fast code health analyzer designed to keep project architectures lean and sustainable. It identifies technical debt, tangled dependencies, and complex logic patterns.
 
 -----
 
@@ -16,9 +16,9 @@
 
   - **File Size Guardian:** Get immediate warnings when a file exceeds your defined line limit. Keep your modules focused and atomic.
 
-  - **Import Overload Detection:** Automatically identifies when a file has too many dependencies, signaling a potential violation of the Single Responsibility Principle.
+  - **Import Overload Detection:** Automatically identifies when a file has too many dependencies, signaling a potential violation of the `Single Responsibility Principle`.
 
-  - **Deep Integration:** Fully compatible with your project's `.swtrc` configuration. It respects your hierarchical rules and custom thresholds.
+  - **Deep Integration:** Create a `.swtrc` configuration. It respects your hierarchical rules and custom thresholds.
 
   - **Lightweight:** Built in Rust-powered logic to ensure zero lag in your typing experience.
 
@@ -31,8 +31,9 @@ The extension monitors your active editor and triggers **VSCode Warnings** (yell
 1.  The **Line Count** exceeds your threshold (Default: 250 lines).
 2.  The **Import Count** is too high for the specific language (e.g., \>15 imports in Rust).
 
-> [!NOTE]  
-> This extension focuses on **real-time structural health**. For deep metrics like **code duplication (Copy-Paste detection)** and global project analysis, please use the [Sweet CLI](https://github.com/SirCesarium/sweet).
+This extension currently focuses on **real-time structural health**.
+
+For deep metrics like **code duplication (Copy-Paste detection)** and global project analysis, please take a look at [Sweet (CLI)](https://github.com/SirCesarium/sweet).
 
 -----
 
