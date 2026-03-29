@@ -147,12 +147,7 @@ pub fn analyze_content<S: std::hash::BuildHasher>(
     let window_size = thresholds.min_duplicate_lines;
 
     if !disabled_rules.contains("max-repetition") && rep_res.hashes.len() >= window_size {
-        let mut chunks: std::collections::HashMap<Vec<u64>, Vec<usize>> =
-            std::collections::HashMap::new();
-        for i in 0..=rep_res.hashes.len() - window_size {
-            let chunk = rep_res.hashes[i..i + window_size].to_vec();
-            chunks.entry(chunk).or_default().push(i + 1);
-        }
+        let chunks = repetition::get_chunks(&rep_res.hashes, window_size);
 
         let content_lines: Vec<&str> = content.lines().collect();
         for positions in chunks.values() {

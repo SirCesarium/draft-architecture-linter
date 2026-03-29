@@ -132,12 +132,14 @@ impl AnalysisEngine {
 
             let window_size = thresholds.min_duplicate_lines;
             if !disabled_rules.contains("max-repetition") && rep_res.hashes.len() >= window_size {
-                for i in 0..=rep_res.hashes.len() - window_size {
-                    let chunk = rep_res.hashes[i..i + window_size].to_vec();
-                    global_chunks
-                        .entry(chunk)
-                        .or_default()
-                        .push((path.to_path_buf(), i + 1));
+                let chunks = repetition::get_chunks(&rep_res.hashes, window_size);
+                for (chunk, positions) in chunks {
+                    for pos in positions {
+                        global_chunks
+                            .entry(chunk.clone())
+                            .or_default()
+                            .push((path.to_path_buf(), pos));
+                    }
                 }
             }
         }

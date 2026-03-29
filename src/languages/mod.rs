@@ -97,6 +97,7 @@ impl LanguageRegistry {
             Box::new(definitions::lua::Lua),
             Box::new(definitions::go::Go),
             Box::new(definitions::php::PHP),
+            Box::new(definitions::cpp::Cpp),
         ];
 
         let mut extension_map = HashMap::new();

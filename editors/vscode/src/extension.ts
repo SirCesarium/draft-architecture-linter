@@ -51,6 +51,8 @@ export function activate(context: ExtensionContext) {
     'lua',
     'go',
     'php',
+    'cpp',
+    'c',
   ];
 
   const clientOptions: LanguageClientOptions = {
@@ -60,6 +62,7 @@ export function activate(context: ExtensionContext) {
       { scheme: 'file', pattern: '**/*.lua' },
       { scheme: 'file', pattern: '**/*.go' },
       { scheme: 'file', pattern: '**/*.php' },
+      { scheme: 'file', pattern: '**/*.{cpp,c,h,hpp,cc,cxx}' },
       { scheme: 'file', pattern: '**/*.rs' },
       { scheme: 'file', pattern: '**/*.py' },
       { scheme: 'file', pattern: '**/*.js' },

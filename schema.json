@@ -33,6 +33,7 @@
           "min_duplicate_lines": 4
         },
         "overrides": {
+          "cpp": null,
           "cs": null,
           "gd": null,
           "go": null,
@@ -168,6 +169,7 @@
           "description": "Language-specific overrides.",
           "$ref": "#/$defs/ThresholdsOverrides",
           "default": {
+            "cpp": null,
             "cs": null,
             "gd": null,
             "go": null,
@@ -186,6 +188,17 @@
       "description": "Known and custom language overrides.",
       "type": "object",
       "properties": {
+        "cpp": {
+          "description": "`C/C++` overrides",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PartialThresholds"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "cs": {
           "description": "C# overrides (.cs)",
           "anyOf": [

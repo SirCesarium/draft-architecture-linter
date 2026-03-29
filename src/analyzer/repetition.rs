@@ -94,6 +94,24 @@ pub fn hash_normalized_line(line: &str) -> u64 {
     s.finish()
 }
 
+/// Extracts chunks of hashes from a sequence and returns a map of their occurrences.
+/// Each key is a vector of hashes (the chunk), and each value is a list of starting positions (1-based).
+#[must_use]
+pub fn get_chunks(
+    hashes: &[u64],
+    window_size: usize,
+) -> std::collections::HashMap<Vec<u64>, Vec<usize>> {
+    let mut chunks: std::collections::HashMap<Vec<u64>, Vec<usize>> =
+        std::collections::HashMap::new();
+    if hashes.len() >= window_size {
+        for i in 0..=hashes.len() - window_size {
+            let chunk = hashes[i..i + window_size].to_vec();
+            chunks.entry(chunk).or_default().push(i + 1);
+        }
+    }
+    chunks
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
