@@ -19,12 +19,12 @@ let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
   const platform = os.platform();
-  let binaryName = 'sweet-lsp-linux';
+  let binaryName = 'sweet-analyzer-lsp-linux';
 
   if (platform === 'win32') {
-    binaryName = 'sweet-lsp-win.exe';
+    binaryName = 'sweet-analyzer-lsp-win.exe';
   } else if (platform === 'darwin') {
-    binaryName = 'sweet-lsp-macos';
+    binaryName = 'sweet-analyzer-lsp-macos';
   }
 
   const serverModule = path.join(context.extensionPath, 'bin', binaryName);

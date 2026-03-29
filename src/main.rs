@@ -140,35 +140,70 @@ fn handle_uncomment(path: &Path, aggressive: bool) -> bool {
 }
 
 fn check_for_updates() {
+    let cache_dir = std::env::temp_dir().join("sweet_update_cache");
     let current_version = env!("CARGO_PKG_VERSION");
-    let releases = self_update::backends::github::ReleaseList::configure()
-        .repo_owner("SirCesarium")
-        .repo_name("sweet")
-        .build();
 
-    if let Some(latest_release) = releases
-        .and_then(self_update::backends::github::ReleaseList::fetch)
-        .ok()
-        .and_then(|latest| {
-            latest.into_iter().find(|r| {
-                self_update::version::bump_is_greater(current_version, &r.version).unwrap_or(false)
-            })
-        })
-    {
-        println!(
-            "\n{}",
-            style(format!(
-                " 🚀 A new version of Sweet is available: v{} (current: v{})",
-                latest_release.version, current_version
-            ))
-            .yellow()
-            .bold()
-        );
-        println!(
-            "    Run {} to update.\n",
-            style("swt update").cyan().italic()
-        );
+    // Check cache first (24h TTL)
+    if let Ok(cached_version) = fs::read_to_string(&cache_dir) {
+        let is_fresh = fs::metadata(&cache_dir)
+            .and_then(|m| m.modified())
+            .map(|m| m.elapsed().map(|e| e.as_secs() < 86400).unwrap_or(false))
+            .unwrap_or(false);
+
+        if is_fresh {
+            if self_update::version::bump_is_greater(current_version, &cached_version)
+                .unwrap_or(false)
+            {
+                print_update_msg(&cached_version, current_version);
+            }
+            return;
+        }
     }
+
+    // Run network check in background
+    std::thread::spawn(move || {
+        let releases = self_update::backends::github::ReleaseList::configure()
+            .repo_owner("SirCesarium")
+            .repo_name("sweet")
+            .build();
+
+        if let Some(latest_release) = releases
+            .and_then(self_update::backends::github::ReleaseList::fetch)
+            .ok()
+            .and_then(|latest| {
+                latest.into_iter().find(|r| {
+                    self_update::version::bump_is_greater(current_version, &r.version)
+                        .unwrap_or(false)
+                })
+            })
+        {
+            let _ = fs::write(&cache_dir, &latest_release.version);
+        } else if let Some(latest) = self_update::backends::github::ReleaseList::configure()
+            .repo_owner("SirCesarium")
+            .repo_name("sweet")
+            .build()
+            .and_then(self_update::backends::github::ReleaseList::fetch)
+            .ok()
+            .and_then(|r| r.into_iter().next())
+        {
+            let _ = fs::write(&cache_dir, &latest.version);
+        }
+    });
+}
+
+fn print_update_msg(latest: &str, current: &str) {
+    println!(
+        "\n{}",
+        style(format!(
+            " 🚀 A new version of Sweet is available: v{latest} (current: v{current})"
+        ))
+        .yellow()
+        .bold()
+    );
+    println!(
+        "    Run {} to update.\n",
+        style("swt update").cyan().italic()
+    );
 }
 
 fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
@@ -179,6 +214,7 @@ fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
         .bin_name("swt")
         .show_download_progress(true)
         .current_version(env!("CARGO_PKG_VERSION"))
+        .no_confirm(false)
         .build()?
         .update()?;
 

@@ -74,7 +74,7 @@ jobs:
         uses: sircesarium/refinery-rs@v2.0
         with:
           target: ${{ matrix.target }}
-          binary-name: "sweet-lsp"
+          binary-name: "sweet-analyzer-lsp"
           features: "lsp"
           use-cross: ${{ matrix.use_cross || false }}
           export-libs: false
