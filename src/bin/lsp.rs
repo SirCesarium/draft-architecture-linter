@@ -1,4 +1,4 @@
-#![deny(clippy::pedantic)]
+#![deny(clippy::pedantic, clippy::unwrap_used, clippy::expect_used)]
 
 use swt::Config;
 use tower_lsp::jsonrpc::Result;
@@ -31,8 +31,15 @@ impl Backend {
             .unwrap_or_default();
         let thresholds = config.get_thresholds(extension);
 
-        let report =
-            swt::analyzer::analyze_content(content, extension, &thresholds, &path, &config);
+        let disabled_rules = swt::analyzer::ignore::get_disabled_rules(content);
+        let report = swt::analyzer::analyze_content(
+            content,
+            extension,
+            &thresholds,
+            &path,
+            &config,
+            &disabled_rules,
+        );
 
         let mut diagnostics = Vec::new();
 
@@ -119,18 +126,20 @@ mod tests {
     use tower_lsp::LspService;
 
     #[tokio::test]
-    async fn test_initialization() {
+    async fn test_initialization() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let (service, _) = LspService::new(|client| Backend { client });
         let params = InitializeParams::default();
-        let result = service.inner().initialize(params).await.unwrap();
+        let result = service.inner().initialize(params).await?;
         assert!(result.capabilities.text_document_sync.is_some());
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_unsupported_file() {
+    async fn test_unsupported_file() -> std::result::Result<(), Box<dyn std::error::Error>> {
         let (service, _) = LspService::new(|client| Backend { client });
-        let uri = Url::parse("file:///test.txt").unwrap();
+        let uri = Url::parse("file:///test.txt")?;
         // Should not panic or return error, just skip
         service.inner().validate_document(uri, "test").await;
+        Ok(())
     }
 }
