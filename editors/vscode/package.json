@@ -58,12 +58,19 @@
     "onLanguage:csharp"
   ],
   "scripts": {
-    "vscode:prepublish": "bun run build",
     "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
     "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --watch",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js"
+    "test": "node ./out/test/runTest.js",
+    "vscode:prepublish": "bun ./scripts/download-binaries.ts && bun run build",
+    "package": "vsce package"
   },
+  "files": [
+    "dist",
+    "bin",
+    "icon.png",
+    "README.md"
+  ],
   "devDependencies": {
     "@types/node": "^20.10.0",
     "@types/vscode": "^1.85.0",

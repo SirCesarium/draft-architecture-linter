@@ -5,11 +5,15 @@
 # VS Code Extension
 editors/vscode/node_modules/
 editors/vscode/dist/
+editors/vscode/bin/
 editors/vscode/out/
 editors/vscode/.vscode-test/
+*.vsix
+node_modules
 
 # Bun
 bun.lockb
 .bun-build/
 
-*.vsix
+*.env
+*.db

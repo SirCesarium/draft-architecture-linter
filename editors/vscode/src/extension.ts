@@ -1,4 +1,5 @@
 import * as path from 'node:path';
+import * as os from 'node:os';
 import { workspace, type ExtensionContext } from 'vscode';
 import {
   LanguageClient,
@@ -10,17 +11,16 @@ import {
 let client: LanguageClient;
 
 export function activate(context: ExtensionContext) {
-  // Path to the sweet-lsp binary (absolute path is safer)
-  const serverModule = path.resolve(
-    context.extensionPath,
-    '..',
-    '..',
-    'target',
-    'debug',
-    'sweet-lsp'
-  );
+  const platform = os.platform();
+  let binaryName = 'sweet-lsp-linux';
 
-  console.log(`[Sweet] Searching for LSP binary at: ${serverModule}`);
+  if (platform === 'win32') {
+    binaryName = 'sweet-lsp-win.exe';
+  } else if (platform === 'darwin') {
+    binaryName = 'sweet-lsp-macos';
+  }
+
+  const serverModule = path.join(context.extensionPath, 'bin', binaryName);
 
   const serverOptions: ServerOptions = {
     run: {

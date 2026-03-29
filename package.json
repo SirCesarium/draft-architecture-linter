@@ -1,0 +1,9 @@
+{
+  "dependencies": {
+    "@types/node": "^25.5.0"
+  },
+  "devDependencies": {
+    "@vscode/vsce": "^3.7.1",
+    "vsce": "^2.15.0"
+  }
+}
