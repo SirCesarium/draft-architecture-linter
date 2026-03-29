@@ -69,7 +69,8 @@
     "dist",
     "bin",
     "icon.png",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "devDependencies": {
     "@types/node": "^20.10.0",
