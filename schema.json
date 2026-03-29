@@ -37,6 +37,7 @@
           "gd": null,
           "java": null,
           "js": null,
+          "lua": null,
           "py": null,
           "rs": null,
           "ts": null
@@ -169,6 +170,7 @@
             "gd": null,
             "java": null,
             "js": null,
+            "lua": null,
             "py": null,
             "rs": null,
             "ts": null
@@ -215,6 +217,17 @@
         },
         "js": {
           "description": "JavaScript overrides (.js, .mjs, .cjs)",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PartialThresholds"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "lua": {
+          "description": "`Lua` overrides (.lua)",
           "anyOf": [
             {
               "$ref": "#/$defs/PartialThresholds"

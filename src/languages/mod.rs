@@ -61,6 +61,7 @@ impl LanguageRegistry {
             Box::new(definitions::java::Java),
             Box::new(definitions::csharp::CSharp),
             Box::new(definitions::gdscript::GDScript),
+            Box::new(definitions::lua::Lua),
         ];
 
         let mut extension_map = HashMap::new();

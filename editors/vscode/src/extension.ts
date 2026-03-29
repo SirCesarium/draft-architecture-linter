@@ -48,12 +48,14 @@ export function activate(context: ExtensionContext) {
     'java',
     'csharp',
     'gdscript',
+    'lua',
   ];
 
   const clientOptions: LanguageClientOptions = {
     documentSelector: [
       ...supportedLanguages.map((lang) => ({ scheme: 'file', language: lang })),
       { scheme: 'file', pattern: '**/*.gd' },
+      { scheme: 'file', pattern: '**/*.lua' },
       { scheme: 'file', pattern: '**/*.rs' },
       { scheme: 'file', pattern: '**/*.py' },
       { scheme: 'file', pattern: '**/*.js' },

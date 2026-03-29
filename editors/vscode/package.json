@@ -25,6 +25,11 @@
         "aliases": ["GDScript"]
       },
       {
+        "id": "lua",
+        "extensions": [".lua"],
+        "aliases": ["Lua"]
+      },
+      {
         "id": "json",
         "extensions": [
           ".swtrc"
@@ -61,7 +66,8 @@
     "onLanguage:typescript",
     "onLanguage:java",
     "onLanguage:csharp",
-    "onLanguage:gdscript"
+    "onLanguage:gdscript",
+    "onLanguage:lua"
   ],
   "scripts": {
     "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",

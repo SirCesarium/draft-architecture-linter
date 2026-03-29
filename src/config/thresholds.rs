@@ -95,6 +95,8 @@ pub struct ThresholdsOverrides {
     pub cs: Option<PartialThresholds>,
     /// `GDScript` overrides (.gd)
     pub gd: Option<PartialThresholds>,
+    /// `Lua` overrides (.lua)
+    pub lua: Option<PartialThresholds>,
     /// Custom overrides for any other extension.
     #[serde(flatten)]
     pub custom: HashMap<String, PartialThresholds>,
@@ -112,6 +114,7 @@ impl ThresholdsOverrides {
             "java" => self.java.as_ref(),
             "cs" => self.cs.as_ref(),
             "gd" => self.gd.as_ref(),
+            "lua" => self.lua.as_ref(),
             _ => self.custom.get(ext),
         }
     }
@@ -138,6 +141,9 @@ impl ThresholdsOverrides {
         }
         if other.cs.is_some() {
             self.cs = other.cs;
+        }
+        if other.lua.is_some() {
+            self.lua = other.lua;
         }
         for (ext, partial) in other.custom {
             self.custom.insert(ext, partial);
