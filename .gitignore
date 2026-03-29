@@ -11,3 +11,5 @@ editors/vscode/.vscode-test/
 # Bun
 bun.lockb
 .bun-build/
+
+*.vsix
