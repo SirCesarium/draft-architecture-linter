@@ -69,7 +69,10 @@ fn main() -> std::process::ExitCode {
         Some(Commands::Update) => {
             return match swt::update::handle_update() {
                 Ok(()) => std::process::ExitCode::SUCCESS,
-                Err(_) => std::process::ExitCode::FAILURE,
+                Err(e) => {
+                    eprintln!("{} {}", style("Error updating Sweet:").red().bold(), e);
+                    std::process::ExitCode::FAILURE
+                }
             };
         }
         Some(Commands::CheckUpdates) => {

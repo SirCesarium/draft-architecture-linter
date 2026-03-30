@@ -3,6 +3,7 @@
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::fs;
+use std::path::Path;
 
 /// Checks for updates and prints a message if a new version is available.
 pub fn check_for_updates() {
@@ -29,6 +30,7 @@ pub fn check_for_updates() {
         println!("{}", style("Sweet is already up to date.").green());
     }
 }
+
 /// Performs the update process with a beautiful progress bar.
 ///
 /// # Errors
@@ -53,12 +55,16 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
         })
         .ok_or("Sweet is already up to date.")?;
 
-    let asset = latest.asset_for(target, None).ok_or_else(|| {
-        format!(
-            "No compatible binary found for {target} in v{}",
-            latest.version
-        )
-    })?;
+    let asset = latest
+        .assets
+        .iter()
+        .find(|a| a.name.starts_with("swt") && a.name.contains(target))
+        .ok_or_else(|| {
+            format!(
+                "No compatible 'swt' binary found for {target} in v{}",
+                latest.version
+            )
+        })?;
 
     println!(
         " 🚀 {} v{current_version} -> v{}",
@@ -71,54 +77,86 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
         fs::create_dir_all(&tmp_dir)?;
     }
     let tmp_file_path = tmp_dir.join(&asset.name);
-    let mut tmp_file = fs::File::create(&tmp_file_path)?;
 
-    // Download with beautiful progress bar
-    let client = reqwest::blocking::Client::new();
-    let mut response = client.get(&asset.download_url).send()?;
-    let total_size = response
-        .content_length()
-        .ok_or("Failed to get content length")?;
+    download_asset(&asset.download_url, &tmp_file_path)?;
 
-    let pb = ProgressBar::new(total_size);
-    pb.set_style(
-        ProgressStyle::with_template(
-            "{prefix:>12.cyan.bold} [{bar:40.magenta/dim}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})",
-        )?
-        .progress_chars("⭓⭔-"),
-    );
-    pb.set_prefix("Downloading");
+    replace_binary(
+        &tmp_file_path,
+        &tmp_dir,
+        &latest.version,
+        asset.name.contains(".tar") || asset.name.contains(".zip"),
+    )?;
 
-    let mut downloaded: u64 = 0;
-    let mut buffer = [0; 8192];
-    while let Ok(n) = std::io::Read::read(&mut response, &mut buffer) {
-        if n == 0 {
-            break;
-        }
-        std::io::Write::write_all(&mut tmp_file, &buffer[..n])?;
-        downloaded += n as u64;
-        pb.set_position(downloaded);
-    }
+    let _ = fs::remove_dir_all(&tmp_dir);
+
+    Ok(())
+}
+
+fn download_asset(url: &str, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let mut tmp_file = fs::File::create(dest)?;
+    let client = reqwest::blocking::Client::builder()
+        .user_agent("sweet-updater")
+        .build()?;
+
+    let response = client
+        .get(url)
+        .header("Accept", "application/octet-stream")
+        .send()?;
+
+    let total_size = response.content_length();
+    let pb = create_progress_bar(total_size)?;
+
+    let mut source = pb.wrap_read(response);
+    let downloaded = std::io::copy(&mut source, &mut tmp_file)?;
     pb.finish_with_message("Download complete");
 
-    println!(
-        " {} Extracting and replacing binary...",
-        style("📦").magenta()
-    );
+    tmp_file.sync_all()?;
+    drop(tmp_file);
 
-    // self_update handles extraction if it's a tar/zip, otherwise it's a no-op
-    let _ = self_update::Extract::from_source(&tmp_file_path).extract_into(&tmp_dir);
+    if downloaded == 0 {
+        return Err(
+            "Downloaded file is empty. Check your connection or GitHub release assets.".into(),
+        );
+    }
+    Ok(())
+}
 
-    // Try to find the binary:
-    // 1. Exact match (swt/swt.exe)
-    // 2. The downloaded file itself (if it wasn't an archive)
-    // 3. Any file starting with 'swt' in the tmp_dir
+fn create_progress_bar(total_size: Option<u64>) -> Result<ProgressBar, Box<dyn std::error::Error>> {
+    let pb = if let Some(size) = total_size {
+        let pb = ProgressBar::new(size);
+        pb.set_style(
+            ProgressStyle::with_template(
+                "{prefix:>12.cyan.bold} [{bar:40.magenta/dim}] {bytes}/{total_bytes} ({bytes_per_sec}, {eta})",
+            )?
+            .progress_chars("⭓⭔-"),
+        );
+        pb
+    } else {
+        let pb = ProgressBar::new_spinner();
+        pb.set_style(ProgressStyle::default_spinner());
+        pb
+    };
+    pb.set_prefix("Downloading");
+    Ok(pb)
+}
+
+fn replace_binary(
+    tmp_file_path: &Path,
+    tmp_dir: &Path,
+    version: &str,
+    is_archive: bool,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if is_archive {
+        println!(" {} Extracting package...", style("📦").magenta());
+        let _ = self_update::Extract::from_source(tmp_file_path).extract_into(tmp_dir);
+    }
+
     let mut new_bin = tmp_dir.join(if cfg!(windows) { "swt.exe" } else { "swt" });
 
     if !new_bin.exists() {
-        if tmp_file_path.exists() && !asset.name.contains(".tar") && !asset.name.contains(".zip") {
-            new_bin = tmp_file_path;
-        } else if let Ok(entries) = fs::read_dir(&tmp_dir) {
+        if tmp_file_path.exists() {
+            new_bin.clone_from(&tmp_file_path.to_path_buf());
+        } else if let Ok(entries) = fs::read_dir(tmp_dir) {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
                 if name.starts_with("swt") && !name.contains(".tar") && !name.contains(".zip") {
@@ -129,25 +167,37 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    if !new_bin.exists() {
+    let new_bin_size = fs::metadata(&new_bin)?.len();
+    if new_bin_size == 0 {
         return Err(format!(
-            "Could not find the new binary in the update package at {}",
-            tmp_dir.display()
+            "The retrieved binary {} is empty (0 bytes).",
+            new_bin.display()
         )
         .into());
     }
 
-    self_update::self_replace::self_replace(new_bin)?;
+    println!(
+        " {} Replacing binary (Source size: {} bytes)...",
+        style("🚀").magenta(),
+        new_bin_size
+    );
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(&new_bin)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(&new_bin, perms)?;
+    }
+
+    self_update::self_replace::self_replace(&new_bin)?;
 
     println!(
         "\n ✨ {}",
-        style(format!("Successfully updated to v{}!", latest.version))
+        style(format!("Successfully updated to v{version}!"))
             .green()
             .bold()
     );
-
-    // Clean up
-    let _ = fs::remove_dir_all(&tmp_dir);
 
     Ok(())
 }
