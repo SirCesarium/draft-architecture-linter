@@ -106,9 +106,33 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
         style("📦").magenta()
     );
 
-    self_update::Extract::from_source(&tmp_file_path).extract_into(&tmp_dir)?;
+    // self_update handles extraction if it's a tar/zip, otherwise it's a no-op
+    let _ = self_update::Extract::from_source(&tmp_file_path).extract_into(&tmp_dir);
 
-    let new_bin = tmp_dir.join(if cfg!(windows) { "swt.exe" } else { "swt" });
+    // Try to find the binary: 
+    // 1. Exact match (swt/swt.exe)
+    // 2. The downloaded file itself (if it wasn't an archive)
+    // 3. Any file starting with 'swt' in the tmp_dir
+    let mut new_bin = tmp_dir.join(if cfg!(windows) { "swt.exe" } else { "swt" });
+
+    if !new_bin.exists() {
+        if tmp_file_path.exists() && !asset.name.contains(".tar") && !asset.name.contains(".zip") {
+            new_bin = tmp_file_path;
+        } else if let Ok(entries) = fs::read_dir(&tmp_dir) {
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with("swt") && !name.contains(".tar") && !name.contains(".zip") {
+                    new_bin = entry.path();
+                    break;
+                }
+            }
+        }
+    }
+
+    if !new_bin.exists() {
+        return Err(format!("Could not find the new binary in the update package at {}", tmp_dir.display()).into());
+    }
+
     self_update::self_replace::self_replace(new_bin)?;
 
     println!(
