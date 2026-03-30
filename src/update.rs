@@ -109,7 +109,7 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
     // self_update handles extraction if it's a tar/zip, otherwise it's a no-op
     let _ = self_update::Extract::from_source(&tmp_file_path).extract_into(&tmp_dir);
 
-    // Try to find the binary: 
+    // Try to find the binary:
     // 1. Exact match (swt/swt.exe)
     // 2. The downloaded file itself (if it wasn't an archive)
     // 3. Any file starting with 'swt' in the tmp_dir
@@ -130,7 +130,11 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     if !new_bin.exists() {
-        return Err(format!("Could not find the new binary in the update package at {}", tmp_dir.display()).into());
+        return Err(format!(
+            "Could not find the new binary in the update package at {}",
+            tmp_dir.display()
+        )
+        .into());
     }
 
     self_update::self_replace::self_replace(new_bin)?;
