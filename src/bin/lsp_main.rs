@@ -31,7 +31,7 @@ mod tests {
     use std::error::Error;
     use std::result::Result as StdResult;
     use tower_lsp::lsp_types::{InitializeParams, Url};
-    use tower_lsp::LspService;
+    use tower_lsp::{LanguageServer, LspService};
 
     #[tokio::test]
     async fn test_initialization() -> StdResult<(), Box<dyn Error>> {
@@ -40,6 +40,7 @@ mod tests {
             workspace_root: Arc::new(RwLock::new(None)),
         });
         let params = InitializeParams::default();
+
         let result = service.inner().initialize(params).await?;
         assert!(result.capabilities.text_document_sync.is_some());
         Ok(())

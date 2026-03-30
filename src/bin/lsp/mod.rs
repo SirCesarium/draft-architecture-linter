@@ -5,13 +5,19 @@ pub mod diag;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use swt::Config;
 use swt::analyzer::analyze_content;
 use swt::analyzer::ignore::get_disabled_rules;
 use swt::languages::{Language, LanguageRegistry};
-use swt::Config;
 use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
-use tower_lsp::lsp_types::*;
+use tower_lsp::lsp_types::{
+    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams,
+    CodeActionProviderCapability, CodeActionResponse, DidChangeTextDocumentParams,
+    DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams, MessageType,
+    Position, Range, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
+    TextEdit, Url, WorkspaceEdit,
+};
 use tower_lsp::{Client, LanguageServer};
 
 #[derive(Debug)]
