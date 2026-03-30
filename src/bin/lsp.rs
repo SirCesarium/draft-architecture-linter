@@ -7,25 +7,28 @@
 
 use serde_json::to_value;
 use std::collections::HashMap;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use swt::analyzer::analyze_content;
 use swt::analyzer::ignore::get_disabled_rules;
 use swt::languages::{Language, LanguageRegistry};
 use swt::{Config, FileReport, Severity};
 use tokio::io::{stdin, stdout};
+use tokio::sync::RwLock;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
-    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams,
-    CodeActionProviderCapability, CodeActionResponse, Diagnostic, DiagnosticRelatedInformation,
-    DiagnosticSeverity, DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams,
-    InitializeResult, InitializedParams, Location, MessageType, Position, Range,
-    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Url,
-    WorkspaceEdit,
+    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams, CodeActionProviderCapability,
+    CodeActionResponse, Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity,
+    DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, InitializeResult,
+    InitializedParams, Location, MessageType, Position, Range, ServerCapabilities,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Url, WorkspaceEdit,
 };
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
 #[derive(Debug)]
 struct Backend {
     client: Client,
+    workspace_root: Arc<RwLock<Option<PathBuf>>>,
 }
 
 impl Backend {
@@ -36,6 +39,13 @@ impl Backend {
 
         if !Config::is_supported_file(&path) {
             return;
+        }
+
+        // Only analyze files within the workspace root to avoid noisy warnings on external files.
+        if let Some(ref root) = *self.workspace_root.read().await {
+            if !path.starts_with(root) {
+                return;
+            }
         }
 
         let config = Config::load(&path);
@@ -157,7 +167,13 @@ impl Backend {
 
 #[tower_lsp::async_trait]
 impl LanguageServer for Backend {
-    async fn initialize(&self, _: InitializeParams) -> Result<InitializeResult> {
+    async fn initialize(&self, params: InitializeParams) -> Result<InitializeResult> {
+        if let Some(root_uri) = params.root_uri {
+            if let Ok(root_path) = root_uri.to_file_path() {
+                *self.workspace_root.write().await = Some(root_path);
+            }
+        }
+
         Ok(InitializeResult {
             capabilities: ServerCapabilities {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
@@ -246,7 +262,10 @@ async fn main() {
     let stdin = stdin();
     let stdout = stdout();
 
-    let (service, socket) = LspService::new(|client| Backend { client });
+    let (service, socket) = LspService::new(|client| Backend {
+        client,
+        workspace_root: Arc::new(RwLock::new(None)),
+    });
     Server::new(stdin, stdout, socket).serve(service).await;
 }
 
@@ -259,7 +278,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_initialization() -> StdResult<(), Box<dyn Error>> {
-        let (service, _) = LspService::new(|client| Backend { client });
+        let (service, _) = LspService::new(|client| Backend {
+            client,
+            workspace_root: Arc::new(RwLock::new(None)),
+        });
         let params = InitializeParams::default();
         let result = service.inner().initialize(params).await?;
         assert!(result.capabilities.text_document_sync.is_some());
@@ -268,7 +290,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_unsupported_file() -> StdResult<(), Box<dyn Error>> {
-        let (service, _) = LspService::new(|client| Backend { client });
+        let (service, _) = LspService::new(|client| Backend {
+            client,
+            workspace_root: Arc::new(RwLock::new(None)),
+        });
         let uri = Url::parse("file:///test.txt")?;
         // Should not panic or return error, just skip
         service.inner().validate_document(uri, "test").await;
