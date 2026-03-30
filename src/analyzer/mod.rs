@@ -2,7 +2,6 @@
 
 pub mod complexity;
 pub mod engine;
-pub mod functions;
 pub mod ignore;
 pub mod repetition;
 pub mod syntax;
@@ -96,12 +95,6 @@ pub fn analyze_content<S: std::hash::BuildHasher>(
     let lines = volume::count_lines(content);
     let imports = syntax::count_imports(content, extension);
     let max_depth = complexity::analyze_depth(content, indent_size);
-    let functions = functions::count_functions(content, extension);
-    let lines_per_function = if functions > 0 {
-        lines / functions
-    } else {
-        lines
-    };
 
     let deep_lines = if disabled_rules.contains("max-depth") {
         Vec::new()
@@ -117,7 +110,6 @@ pub fn analyze_content<S: std::hash::BuildHasher>(
         imports,
         max_depth,
         repetition: rep_res.percentage,
-        lines_per_function,
     };
 
     let issues = collect_issues(&metrics, thresholds, config, disabled_rules);
@@ -157,8 +149,6 @@ pub fn analyze_content<S: std::hash::BuildHasher>(
         imports,
         max_depth,
         repetition: rep_res.percentage,
-        functions,
-        lines_per_function,
         is_sweet,
         issues,
         config: Some(config.clone()),
@@ -173,7 +163,6 @@ struct RawMetrics {
     imports: usize,
     max_depth: usize,
     repetition: f64,
-    lines_per_function: usize,
 }
 
 /// Aggregates all rule violations into a list of Issues.
@@ -220,17 +209,6 @@ fn collect_issues<S: std::hash::BuildHasher>(
                 metrics.repetition, thresholds.max_repetition
             ),
             severity: config.thresholds.severities.get("max-repetition"),
-        });
-    }
-    if !disabled_rules.contains("max-lines-per-function")
-        && metrics.lines_per_function > thresholds.max_lines_per_function
-    {
-        issues.push(crate::Issue {
-            message: format!(
-                "God functions detected: avg {} lines/function (max {})",
-                metrics.lines_per_function, thresholds.max_lines_per_function
-            ),
-            severity: config.thresholds.severities.get("max-lines-per-function"),
         });
     }
 

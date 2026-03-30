@@ -52,12 +52,11 @@ fn render_file_row<W: Write>(handle: &mut W, report: &FileReport) {
     let path_str = report.path.to_string_lossy();
 
     let stats = format!(
-        "{} lines · {} imports · depth {} · {:.1}% repeat · {} lines/fn",
+        "{} lines · {} imports · depth {} · {:.1}% repeat",
         report.lines,
         report.imports,
         report.max_depth,
         report.repetition,
-        report.lines_per_function
     );
 
     if report.is_sweet && report.issues.is_empty() {

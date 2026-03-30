@@ -6,15 +6,19 @@ impl Language for GDScript {
     fn name(&self) -> &'static str {
         "GDScript"
     }
+
     fn extensions(&self) -> &'static [&'static str] {
         &["gd"]
     }
+
     fn line_comment(&self) -> Option<&'static str> {
         Some("#")
     }
+
     fn block_comment(&self) -> Option<(&'static str, &'static str)> {
         None
     }
+
     fn import_keywords(&self) -> &'static [&'static str] {
         &["extends", "preload(", "load(", "class_name"]
     }
@@ -25,9 +29,5 @@ impl Language for GDScript {
             max_depth: 7,
             ..Default::default()
         }
-    }
-
-    fn function_keywords(&self) -> &'static [&'static str] {
-        &["func ", "static func "]
     }
 }

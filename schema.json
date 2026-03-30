@@ -28,7 +28,6 @@
           "max_depth": 6,
           "max_imports": 25,
           "max_lines": 400,
-          "max_lines_per_function": 200,
           "max_repetition": 15.0,
           "min_duplicate_lines": 4
         },
@@ -49,7 +48,6 @@
           "max_depth": null,
           "max_imports": null,
           "max_lines": null,
-          "max_lines_per_function": null,
           "max_repetition": null
         }
       }
@@ -77,14 +75,6 @@
           "minimum": 0
         },
         "max_lines": {
-          "type": [
-            "integer",
-            "null"
-          ],
-          "format": "uint",
-          "minimum": 0
-        },
-        "max_lines_per_function": {
           "type": [
             "integer",
             "null"
@@ -137,17 +127,6 @@
         },
         "max_lines": {
           "description": "Severity for `max_lines` rule.",
-          "anyOf": [
-            {
-              "$ref": "#/$defs/Severity"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "max_lines_per_function": {
-          "description": "Severity for `max_lines_per_function` rule.",
           "anyOf": [
             {
               "$ref": "#/$defs/Severity"
@@ -210,13 +189,6 @@
           "default": 400,
           "minimum": 0
         },
-        "max_lines_per_function": {
-          "description": "Maximum allowed average lines per function.",
-          "type": "integer",
-          "format": "uint",
-          "default": 200,
-          "minimum": 0
-        },
         "max_repetition": {
           "description": "Maximum allowed repetition percentage (0-100).",
           "type": "number",
@@ -243,7 +215,6 @@
             "max_depth": 6,
             "max_imports": 25,
             "max_lines": 400,
-            "max_lines_per_function": 200,
             "max_repetition": 15.0,
             "min_duplicate_lines": 4
           }
@@ -272,7 +243,6 @@
             "max_depth": null,
             "max_imports": null,
             "max_lines": null,
-            "max_lines_per_function": null,
             "max_repetition": null
           }
         }

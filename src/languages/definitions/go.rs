@@ -6,20 +6,21 @@ impl Language for Go {
     fn name(&self) -> &'static str {
         "Go"
     }
+
     fn extensions(&self) -> &'static [&'static str] {
         &["go"]
     }
+
     fn line_comment(&self) -> Option<&'static str> {
         Some("//")
     }
+
     fn block_comment(&self) -> Option<(&'static str, &'static str)> {
         Some(("/*", "*/"))
     }
+
     fn import_keywords(&self) -> &'static [&'static str] {
         &["import"]
-    }
-    fn function_keywords(&self) -> &'static [&'static str] {
-        &["func "]
     }
 
     fn count_imports(&self, content: &str) -> usize {
