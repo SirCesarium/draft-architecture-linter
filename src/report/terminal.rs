@@ -53,10 +53,7 @@ fn render_file_row<W: Write>(handle: &mut W, report: &FileReport) {
 
     let stats = format!(
         "{} lines · {} imports · depth {} · {:.1}% repeat",
-        report.lines,
-        report.imports,
-        report.max_depth,
-        report.repetition,
+        report.lines, report.imports, report.max_depth, report.repetition,
     );
 
     if report.is_sweet && report.issues.is_empty() {
