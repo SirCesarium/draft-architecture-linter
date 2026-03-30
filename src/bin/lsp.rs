@@ -55,8 +55,6 @@ impl Backend {
                 "max-depth"
             } else if issue.message.contains("repetition") {
                 "max-repetition"
-            } else if issue.message.contains("God functions") {
-                "max-lines-per-function"
             } else {
                 "unknown"
             };

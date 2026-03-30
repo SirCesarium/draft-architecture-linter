@@ -38,7 +38,6 @@ _Note: You can change this behavior to "Always On" in the VS Code settings (`swe
 The extension provides live structural diagnostics through **VS Code Warnings** (yellow squiggles) for:
 
 1. **File Bloat:** Total line count exceeds thresholds.
-2. **God Functions:** High average lines-per-function (Single Responsibility Principle).
 3. **Logical Depth:** Deeply nested control flow (cognitive complexity).
 4. **Tangled Coupling:** Excessive import/dependency statements.
 5. **Local Repetition:** Duplicated logic within the same file.
@@ -56,7 +55,7 @@ You can customize the importance of each rule in your `.swtrc`:
   "thresholds": {
     "global": {
       "max_lines": 400,
-      "max_lines_per_function": 200
+      "max_depth": 5
     },
     "severities": {
       "max-repetition": "warning",
@@ -69,7 +68,7 @@ You can customize the importance of each rule in your `.swtrc`:
 ### 🍭 In-file Disabling
 
 Use `Ctrl+.` (Quick Fix) or manually add a comment to disable specific rules:
-`@swt-disable max-lines max-repetition max-depth max-imports max-lines-per-function`
+`@swt-disable max-lines max-repetition max-depth max-imports`
 
 ---
 

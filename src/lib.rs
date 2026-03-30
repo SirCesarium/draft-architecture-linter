@@ -45,7 +45,7 @@ pub struct FileReport {
     pub max_depth: usize,
     /// Measured repetition percentage.
     pub repetition: f64,
-    /// Calculated lines per function.
+    /// True if no Error-level thresholds were exceeded.
     pub is_sweet: bool,
     /// List of descriptive issue messages.
     pub issues: Vec<Issue>,

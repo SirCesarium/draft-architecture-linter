@@ -34,7 +34,6 @@ Most linters focus on syntax; `Sweet` focuses on **maintainability**. It acts as
 | Metric | Goal | Engineering Impact |
 | :--- | :--- | :--- |
 | **Physical Weight** | `max_lines` | Prevents bloated files and encourages decomposition. |
-| **Logic Density** | `max_lines_per_function` | Enforces **SRP** by identifying "God Functions". |
 | **Control Flow** | `max_depth` | Flags excessive nesting to keep logic readable. |
 | **Coupling** | `max_imports` | Monitors dependency growth to prevent tangled architectures. |
 | **Repetition** | `max_repetition` | Identifies violations of the **DRY** principle. |
@@ -150,7 +149,7 @@ jobs:
   "thresholds": {
     "global": { 
       "max_lines": 400, 
-      "max_lines_per_function": 200
+      "max_depth": 5
     },
     "severities": {
       "max-repetition": "warning"
@@ -168,7 +167,7 @@ By default, all rule violations are treated as **errors** (causing a non-zero ex
 Disable specific checks via comments in the first 20 lines:
 `// @swt-disable max-lines max-repetition`
 
-**Rules:** `max-lines`, `max-depth`, `max-imports`, `max-repetition`, `max-lines-per-function`.
+**Rules:** `max-lines`, `max-depth`, `max-imports`, `max-repetition`.
 
 To ignore a file entirely, use `@sweetignore`.
 

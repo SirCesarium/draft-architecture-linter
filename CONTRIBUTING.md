@@ -35,7 +35,6 @@ impl Language for Go {
     fn line_comment(&self) -> Option<&'static str> { Some("//") }
     fn block_comment(&self) -> Option<(&'static str, &'static str)> { Some(("/*", "*/")) }
     fn import_keywords(&self) -> &'static [&'static str] { &["import"] }
-    fn function_keywords(&self) -> &'static [&'static str] { &["func "] }
     
     // Default thresholds for Go (optional override)
     fn default_thresholds(&self) -> crate::Thresholds {

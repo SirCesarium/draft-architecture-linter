@@ -27,8 +27,6 @@ pub struct RuleSeverities {
     pub max_imports: Option<Severity>,
     /// Severity for `max_repetition` rule.
     pub max_repetition: Option<Severity>,
-    /// Severity for `max_lines_per_function` rule.
-    pub max_lines_per_function: Option<Severity>,
 }
 
 impl RuleSeverities {
@@ -40,13 +38,12 @@ impl RuleSeverities {
             "max-depth" => self.max_depth.unwrap_or(Severity::Error),
             "max-imports" => self.max_imports.unwrap_or(Severity::Error),
             "max-repetition" => self.max_repetition.unwrap_or(Severity::Error),
-            "max-lines-per-function" => self.max_lines_per_function.unwrap_or(Severity::Error),
             _ => Severity::Error,
         }
     }
 
     /// Merges another set of severities into this one.
-    pub fn extend(&mut self, other: &Self) {
+    pub const fn extend(&mut self, other: &Self) {
         if let Some(v) = other.max_lines {
             self.max_lines = Some(v);
         }
@@ -58,9 +55,6 @@ impl RuleSeverities {
         }
         if let Some(v) = other.max_repetition {
             self.max_repetition = Some(v);
-        }
-        if let Some(v) = other.max_lines_per_function {
-            self.max_lines_per_function = Some(v);
         }
     }
 }
@@ -84,9 +78,6 @@ pub struct Thresholds {
     /// Minimum identical lines to trigger repetition detection.
     #[serde(default = "default_min_duplicate_lines")]
     pub min_duplicate_lines: usize,
-    /// Maximum allowed average lines per function.
-    #[serde(default = "default_max_lines_per_function")]
-    pub max_lines_per_function: usize,
 }
 
 #[must_use]
@@ -109,10 +100,6 @@ pub const fn default_max_repetition() -> f64 {
 pub const fn default_min_duplicate_lines() -> usize {
     4
 }
-#[must_use]
-pub const fn default_max_lines_per_function() -> usize {
-    200
-}
 
 impl Default for Thresholds {
     fn default() -> Self {
@@ -122,7 +109,6 @@ impl Default for Thresholds {
             max_imports: 25,
             max_repetition: 15.0,
             min_duplicate_lines: 4,
-            max_lines_per_function: 200,
         }
     }
 }
@@ -243,5 +229,4 @@ pub struct PartialThresholds {
     pub max_imports: Option<usize>,
     pub max_repetition: Option<f64>,
     pub min_duplicate_lines: Option<usize>,
-    pub max_lines_per_function: Option<usize>,
 }
