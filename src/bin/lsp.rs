@@ -1,13 +1,25 @@
-#![deny(clippy::pedantic, clippy::unwrap_used, clippy::expect_used)]
+#![deny(
+    clippy::pedantic,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::absolute_paths
+)]
 
-use swt::Config;
+use serde_json::to_value;
+use std::collections::HashMap;
+use swt::analyzer::analyze_content;
+use swt::analyzer::ignore::get_disabled_rules;
+use swt::languages::{Language, LanguageRegistry};
+use swt::{Config, FileReport, Severity};
+use tokio::io::{stdin, stdout};
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
-    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams, CodeActionResponse,
-    Diagnostic, DiagnosticRelatedInformation, DiagnosticSeverity, DidChangeTextDocumentParams,
-    DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams, Location,
-    MessageType, Position, Range, ServerCapabilities, TextDocumentSyncCapability,
-    TextDocumentSyncKind, TextEdit, Url, WorkspaceEdit,
+    CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams,
+    CodeActionProviderCapability, CodeActionResponse, Diagnostic, DiagnosticRelatedInformation,
+    DiagnosticSeverity, DidChangeTextDocumentParams, DidOpenTextDocumentParams, InitializeParams,
+    InitializeResult, InitializedParams, Location, MessageType, Position, Range,
+    ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Url,
+    WorkspaceEdit,
 };
 use tower_lsp::{Client, LanguageServer, LspService, Server};
 
@@ -33,8 +45,8 @@ impl Backend {
             .unwrap_or_default();
         let thresholds = config.get_thresholds(extension);
 
-        let disabled_rules = swt::analyzer::ignore::get_disabled_rules(content);
-        let report = swt::analyzer::analyze_content(
+        let disabled_rules = get_disabled_rules(content);
+        let report = analyze_content(
             content,
             extension,
             &thresholds,
@@ -60,8 +72,8 @@ impl Backend {
             };
 
             let severity = match config.thresholds.severities.get(rule) {
-                swt::Severity::Error => DiagnosticSeverity::ERROR,
-                swt::Severity::Warning => DiagnosticSeverity::WARNING,
+                Severity::Error => DiagnosticSeverity::ERROR,
+                Severity::Warning => DiagnosticSeverity::WARNING,
             };
 
             diagnostics.push(Diagnostic {
@@ -69,7 +81,7 @@ impl Backend {
                 severity: Some(severity),
                 message: format!("🍬 Sweet: {}", issue.message),
                 source: Some("sweet".to_string()),
-                data: Some(serde_json::to_value(rule).unwrap_or_default()),
+                data: Some(to_value(rule).unwrap_or_default()),
                 ..Default::default()
             });
         }
@@ -78,8 +90,8 @@ impl Backend {
             #[allow(clippy::cast_possible_truncation)]
             let l = (*line as u32).saturating_sub(1);
             let severity = match config.thresholds.severities.get("max-depth") {
-                swt::Severity::Error => DiagnosticSeverity::ERROR,
-                swt::Severity::Warning => DiagnosticSeverity::WARNING,
+                Severity::Error => DiagnosticSeverity::ERROR,
+                Severity::Warning => DiagnosticSeverity::WARNING,
             };
 
             diagnostics.push(Diagnostic {
@@ -87,7 +99,7 @@ impl Backend {
                 severity: Some(severity),
                 message: format!("🍬 Sweet: Excessive nesting depth: {depth}"),
                 source: Some("sweet".to_string()),
-                data: Some(serde_json::to_value("max-depth").unwrap_or_default()),
+                data: Some(to_value("max-depth").unwrap_or_default()),
                 ..Default::default()
             });
         }
@@ -99,11 +111,7 @@ impl Backend {
             .await;
     }
 
-    fn report_duplicates(
-        report: &swt::FileReport,
-        config: &Config,
-        diagnostics: &mut Vec<Diagnostic>,
-    ) {
+    fn report_duplicates(report: &FileReport, config: &Config, diagnostics: &mut Vec<Diagnostic>) {
         for duplicate in &report.duplicates {
             #[allow(clippy::cast_possible_truncation)]
             let start_line = (duplicate.line as u32).saturating_sub(1);
@@ -127,8 +135,8 @@ impl Backend {
             }
 
             let severity = match config.thresholds.severities.get("max-repetition") {
-                swt::Severity::Error => DiagnosticSeverity::ERROR,
-                swt::Severity::Warning => DiagnosticSeverity::WARNING,
+                Severity::Error => DiagnosticSeverity::ERROR,
+                Severity::Warning => DiagnosticSeverity::WARNING,
             };
 
             diagnostics.push(Diagnostic {
@@ -140,7 +148,7 @@ impl Backend {
                 ),
                 source: Some("sweet".to_string()),
                 related_information: Some(related_information),
-                data: Some(serde_json::to_value("max-repetition").unwrap_or_default()),
+                data: Some(to_value("max-repetition").unwrap_or_default()),
                 ..Default::default()
             });
         }
@@ -155,9 +163,7 @@ impl LanguageServer for Backend {
                 text_document_sync: Some(TextDocumentSyncCapability::Kind(
                     TextDocumentSyncKind::FULL,
                 )),
-                code_action_provider: Some(
-                    tower_lsp::lsp_types::CodeActionProviderCapability::Simple(true),
-                ),
+                code_action_provider: Some(CodeActionProviderCapability::Simple(true)),
                 ..Default::default()
             },
             ..Default::default()
@@ -193,10 +199,10 @@ impl LanguageServer for Backend {
             .extension()
             .and_then(|e| e.to_str())
             .unwrap_or_default();
-        let registry = swt::languages::LanguageRegistry::get();
+        let registry = LanguageRegistry::get();
         let comment = registry
             .get_by_extension(extension)
-            .and_then(swt::languages::Language::line_comment)
+            .and_then(Language::line_comment)
             .unwrap_or("//");
 
         for diagnostic in params.context.diagnostics {
@@ -211,7 +217,7 @@ impl LanguageServer for Backend {
                     format!("{comment} @swt-disable {rule}\n"),
                 );
 
-                let mut changes = std::collections::HashMap::new();
+                let mut changes = HashMap::new();
                 changes.insert(params.text_document.uri.clone(), vec![edit]);
 
                 actions.push(CodeActionOrCommand::CodeAction(CodeAction {
@@ -237,8 +243,8 @@ impl LanguageServer for Backend {
 
 #[tokio::main]
 async fn main() {
-    let stdin = tokio::io::stdin();
-    let stdout = tokio::io::stdout();
+    let stdin = stdin();
+    let stdout = stdout();
 
     let (service, socket) = LspService::new(|client| Backend { client });
     Server::new(stdin, stdout, socket).serve(service).await;
@@ -247,10 +253,12 @@ async fn main() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::error::Error;
+    use std::result::Result as StdResult;
     use tower_lsp::LspService;
 
     #[tokio::test]
-    async fn test_initialization() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    async fn test_initialization() -> StdResult<(), Box<dyn Error>> {
         let (service, _) = LspService::new(|client| Backend { client });
         let params = InitializeParams::default();
         let result = service.inner().initialize(params).await?;
@@ -259,7 +267,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_unsupported_file() -> std::result::Result<(), Box<dyn std::error::Error>> {
+    async fn test_unsupported_file() -> StdResult<(), Box<dyn Error>> {
         let (service, _) = LspService::new(|client| Backend { client });
         let uri = Url::parse("file:///test.txt")?;
         // Should not panic or return error, just skip

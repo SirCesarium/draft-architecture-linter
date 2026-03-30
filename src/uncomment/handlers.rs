@@ -1,5 +1,7 @@
+use std::str::Chars;
+
 pub fn handle_block_comment_end(
-    chars: &mut std::str::Chars,
+    chars: &mut Chars,
     result: &mut String,
     in_block_comment: &mut bool,
     block_delimiters: Option<(&str, &str)>,
@@ -35,7 +37,7 @@ pub fn handle_block_comment_end(
     false
 }
 
-pub fn consume_jsx_closing_brace(chars: &mut std::str::Chars) {
+pub fn consume_jsx_closing_brace(chars: &mut Chars) {
     let lookahead = chars.clone();
     for nc in lookahead {
         if nc.is_whitespace() {
@@ -52,7 +54,7 @@ pub fn consume_jsx_closing_brace(chars: &mut std::str::Chars) {
     }
 }
 
-pub fn try_handle_jsx_comment(chars: &mut std::str::Chars, in_block_comment: &mut bool) -> bool {
+pub fn try_handle_jsx_comment(chars: &mut Chars, in_block_comment: &mut bool) -> bool {
     let mut preview = chars.clone();
     let mut found = false;
     while let Some(nc) = preview.next() {
@@ -82,7 +84,7 @@ pub fn try_handle_jsx_comment(chars: &mut std::str::Chars, in_block_comment: &mu
 }
 
 pub fn handle_comment_start(
-    chars: &mut std::str::Chars,
+    chars: &mut Chars,
     in_block_comment: &mut bool,
     in_line_comment: &mut bool,
     block_delimiters: Option<(&str, &str)>,

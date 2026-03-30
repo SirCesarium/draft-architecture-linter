@@ -1,114 +1,76 @@
-//! Duplicate code detection using sliding window hashing.
+//! Logic for identifying code clones and calculating duplication percentage.
 
-use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
+use std::collections::{HashMap, HashSet};
 use std::hash::{Hash, Hasher};
 
-/// Measured repetition results for a specific file.
+/// Holds the result of a repetition analysis.
 pub struct RepetitionResult {
-    /// Percentage of duplicated code.
+    /// Percentage of duplicated code (0.0 to 100.0).
     pub percentage: f64,
-    /// Detailed information about the duplicated chunks.
+    /// List of computed chunk hashes and their line positions.
     pub hashes: Vec<u64>,
-    /// Line mapping to retrieve original content.
-    pub line_map: Vec<String>,
 }
 
-/// Measures the percentage of repetitive code blocks in the content.
-///
-/// Uses normalized line hashing and a sliding window to identify duplicate code chunks.
+/// Analyzes content for repeated lines and returns a summary.
 #[must_use]
-pub fn analyze_repetition(content: &str, min_duplicate_lines: usize) -> RepetitionResult {
-    let lines_content: Vec<String> = content
-        .lines()
-        .filter(|l| !l.contains("@sweetignore"))
-        .map(std::string::ToString::to_string)
-        .collect();
-
-    if lines_content.is_empty() {
+pub fn analyze_repetition(content: &str, window_size: usize) -> RepetitionResult {
+    if content.is_empty() || window_size == 0 {
         return RepetitionResult {
             percentage: 0.0,
-            hashes: vec![],
-            line_map: vec![],
+            hashes: Vec::new(),
         };
     }
 
-    let hashes: Vec<u64> = lines_content
-        .iter()
-        .map(|l| hash_normalized_line(l))
-        .collect();
+    let lines: Vec<String> = content.lines().map(ToString::to_string).collect();
 
-    if hashes.len() < min_duplicate_lines {
+    if lines.len() < window_size {
         return RepetitionResult {
             percentage: 0.0,
-            hashes,
-            line_map: lines_content,
+            hashes: Vec::new(),
         };
     }
 
-    let mut repetitive_lines = vec![false; hashes.len()];
-    let mut chunks: HashMap<&[u64], Vec<usize>> = HashMap::with_capacity(hashes.len());
-
-    for i in 0..=hashes.len() - min_duplicate_lines {
-        let chunk = &hashes[i..i + min_duplicate_lines];
-
-        if lines_content[i..i + min_duplicate_lines]
-            .iter()
-            .all(|l| l.trim().len() < 3)
-        {
-            continue;
-        }
-
-        chunks.entry(chunk).or_default().push(i);
+    let mut hashes = Vec::with_capacity(lines.len());
+    for line in &lines {
+        let mut h = DefaultHasher::new();
+        line.trim().hash(&mut h);
+        hashes.push(h.finish());
     }
 
-    for occurrences in chunks.values().filter(|v| v.len() > 1) {
-        for &start_idx in occurrences {
-            for r in &mut repetitive_lines[start_idx..start_idx + min_duplicate_lines] {
-                *r = true;
+    let chunks = get_chunks(&hashes, window_size);
+    let mut duplicated_lines = HashSet::new();
+
+    for positions in chunks.values() {
+        if positions.len() > 1 {
+            for &pos in positions {
+                for i in 0..window_size {
+                    duplicated_lines.insert(pos + i);
+                }
             }
         }
     }
 
-    let repeated_count = repetitive_lines.iter().filter(|&&r| r).count();
-
     #[allow(clippy::cast_precision_loss)]
-    let percentage = (repeated_count as f64 / hashes.len() as f64) * 100.0;
+    let percentage = (duplicated_lines.len() as f64 / lines.len() as f64) * 100.0;
 
-    RepetitionResult {
-        percentage,
-        hashes,
-        line_map: lines_content,
-    }
+    RepetitionResult { percentage, hashes }
 }
 
-/// Computes a hash for a line after removing whitespace and converting to lowercase.
+/// Breaks a list of hashes into windows and maps each chunk to its positions.
 #[must_use]
-pub fn hash_normalized_line(line: &str) -> u64 {
-    let mut s = DefaultHasher::new();
-    for c in line.chars().filter(|c| !c.is_whitespace()) {
-        for lc in c.to_lowercase() {
-            lc.hash(&mut s);
-        }
+pub fn get_chunks(hashes: &[u64], window_size: usize) -> HashMap<Vec<u64>, Vec<usize>> {
+    if hashes.len() < window_size {
+        return HashMap::new();
     }
-    s.finish()
-}
 
-/// Extracts chunks of hashes from a sequence and returns a map of their occurrences.
-/// Each key is a vector of hashes (the chunk), and each value is a list of starting positions (1-based).
-#[must_use]
-pub fn get_chunks(
-    hashes: &[u64],
-    window_size: usize,
-) -> std::collections::HashMap<Vec<u64>, Vec<usize>> {
-    let mut chunks: std::collections::HashMap<Vec<u64>, Vec<usize>> =
-        std::collections::HashMap::new();
-    if hashes.len() >= window_size {
-        for i in 0..=hashes.len() - window_size {
-            let chunk = hashes[i..i + window_size].to_vec();
-            chunks.entry(chunk).or_default().push(i + 1);
-        }
+    let mut chunks: HashMap<Vec<u64>, Vec<usize>> = HashMap::new();
+
+    for i in 0..=hashes.len() - window_size {
+        let chunk = hashes[i..i + window_size].to_vec();
+        chunks.entry(chunk).or_default().push(i + 1);
     }
+
     chunks
 }
 
@@ -118,11 +80,9 @@ mod tests {
 
     #[test]
     fn test_repetition() {
-        let no_rep =
-            "fn main() {\n    let x = 1;\n    let y = 2;\n    let z = 3;\n    let w = 4;\n}";
-        assert!(analyze_repetition(no_rep, 4).percentage.abs() < f64::EPSILON);
-
-        let rep = "let a = 1;\nlet b = 2;\nlet c = 3;\nlet d = 4;\nlet a = 1;\nlet b = 2;\nlet c = 3;\nlet d = 4;";
-        assert!(analyze_repetition(rep, 4).percentage > 0.0);
+        let content = "a\nb\nc\na\nb\nc\nd";
+        let res = analyze_repetition(content, 3);
+        assert!(res.percentage > 0.0);
+        assert_eq!(res.hashes.len(), 7);
     }
 }

@@ -2,7 +2,14 @@
 
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
+use reqwest::blocking::Client;
+use self_update::backends::github::ReleaseList;
+use self_update::self_replace;
+use self_update::version::bump_is_greater;
+use std::env;
+use std::error;
 use std::fs;
+use std::io;
 use std::path::Path;
 
 /// Checks for updates and prints a message if a new version is available.
@@ -11,18 +18,18 @@ pub fn check_for_updates() {
 
     println!("{}", style("🔍 Checking for updates...").cyan());
 
-    let releases = self_update::backends::github::ReleaseList::configure()
+    let releases = ReleaseList::configure()
         .repo_owner("SirCesarium")
         .repo_name("sweet")
         .build();
 
     if let Some(latest_release) = releases
-        .and_then(self_update::backends::github::ReleaseList::fetch)
+        .and_then(ReleaseList::fetch)
         .ok()
         .and_then(|latest| {
-            latest.into_iter().find(|r| {
-                self_update::version::bump_is_greater(current_version, &r.version).unwrap_or(false)
-            })
+            latest
+                .into_iter()
+                .find(|r| bump_is_greater(current_version, &r.version).unwrap_or(false))
         })
     {
         print_update_msg(&latest_release.version, current_version);
@@ -37,12 +44,12 @@ pub fn check_for_updates() {
 ///
 /// Returns an error if the network request fails, the binary cannot be extracted,
 /// or the current executable cannot be replaced.
-pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
+pub fn handle_update() -> Result<(), Box<dyn error::Error>> {
     println!("{}", style("🔍 Checking for updates...").cyan());
     let current_version = env!("CARGO_PKG_VERSION");
     let target = self_update::get_target();
 
-    let releases = self_update::backends::github::ReleaseList::configure()
+    let releases = ReleaseList::configure()
         .repo_owner("SirCesarium")
         .repo_name("sweet")
         .build()?
@@ -50,9 +57,7 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
 
     let latest = releases
         .iter()
-        .find(|r| {
-            self_update::version::bump_is_greater(current_version, &r.version).unwrap_or(false)
-        })
+        .find(|r| bump_is_greater(current_version, &r.version).unwrap_or(false))
         .ok_or("Sweet is already up to date.")?;
 
     let asset = latest
@@ -72,7 +77,7 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
         style(&latest.version).green().bold()
     );
 
-    let tmp_dir = std::env::temp_dir().join("sweet_update");
+    let tmp_dir = env::temp_dir().join("sweet_update");
     if !tmp_dir.exists() {
         fs::create_dir_all(&tmp_dir)?;
     }
@@ -92,11 +97,9 @@ pub fn handle_update() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-fn download_asset(url: &str, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
+fn download_asset(url: &str, dest: &Path) -> Result<(), Box<dyn error::Error>> {
     let mut tmp_file = fs::File::create(dest)?;
-    let client = reqwest::blocking::Client::builder()
-        .user_agent("sweet-updater")
-        .build()?;
+    let client = Client::builder().user_agent("sweet-updater").build()?;
 
     let response = client
         .get(url)
@@ -107,7 +110,7 @@ fn download_asset(url: &str, dest: &Path) -> Result<(), Box<dyn std::error::Erro
     let pb = create_progress_bar(total_size)?;
 
     let mut source = pb.wrap_read(response);
-    let downloaded = std::io::copy(&mut source, &mut tmp_file)?;
+    let downloaded = io::copy(&mut source, &mut tmp_file)?;
     pb.finish_with_message("Download complete");
 
     tmp_file.sync_all()?;
@@ -121,7 +124,7 @@ fn download_asset(url: &str, dest: &Path) -> Result<(), Box<dyn std::error::Erro
     Ok(())
 }
 
-fn create_progress_bar(total_size: Option<u64>) -> Result<ProgressBar, Box<dyn std::error::Error>> {
+fn create_progress_bar(total_size: Option<u64>) -> Result<ProgressBar, Box<dyn error::Error>> {
     let pb = if let Some(size) = total_size {
         let pb = ProgressBar::new(size);
         pb.set_style(
@@ -145,7 +148,7 @@ fn replace_binary(
     tmp_dir: &Path,
     version: &str,
     is_archive: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<dyn error::Error>> {
     if is_archive {
         println!(" {} Extracting package...", style("📦").magenta());
         let _ = self_update::Extract::from_source(tmp_file_path).extract_into(tmp_dir);
@@ -190,7 +193,7 @@ fn replace_binary(
         fs::set_permissions(&new_bin, perms)?;
     }
 
-    self_update::self_replace::self_replace(&new_bin)?;
+    self_replace::self_replace(&new_bin)?;
 
     println!(
         "\n ✨ {}",

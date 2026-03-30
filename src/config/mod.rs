@@ -2,6 +2,7 @@
 
 pub mod thresholds;
 
+use crate::languages::{Language, LanguageRegistry};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -94,11 +95,10 @@ impl Config {
     /// Resolves effective thresholds for a specific file extension.
     #[must_use]
     pub fn get_thresholds(&self, extension: &str) -> Thresholds {
-        let registry = crate::languages::LanguageRegistry::get();
-        let mut t = registry.get_by_extension(extension).map_or_else(
-            Thresholds::default,
-            crate::languages::Language::default_thresholds,
-        );
+        let registry = LanguageRegistry::get();
+        let mut t = registry
+            .get_by_extension(extension)
+            .map_or_else(Thresholds::default, Language::default_thresholds);
 
         // Global config overrides language defaults
         let og = &self.thresholds.global;
@@ -143,7 +143,7 @@ impl Config {
     #[must_use]
     pub fn is_supported_file(path: &Path) -> bool {
         let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
-        let supported = crate::languages::LanguageRegistry::get()
+        let supported = LanguageRegistry::get()
             .get_by_extension(extension)
             .is_some();
 

@@ -1,6 +1,7 @@
 //! High-level analysis orchestration and parallel file processing.
 
 use crate::analyzer::repetition;
+use crate::uncomment::remove_comments;
 use crate::{Config, FileReport, RepetitionDetail};
 use dashmap::DashMap;
 use ignore::WalkBuilder;
@@ -8,6 +9,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
+use std::sync::mpsc::channel;
 use std::time::Duration;
 
 /// Type alias for mapping code chunks to their project-wide occurrences.
@@ -53,7 +55,7 @@ impl AnalysisEngine {
             walk_builder.add_ignore(exclude);
         }
 
-        let (tx, rx) = std::sync::mpsc::channel();
+        let (tx, rx) = channel();
         walk_builder.build_parallel().run(|| {
             let tx = tx.clone();
             Box::new(move |result| {
@@ -127,7 +129,7 @@ impl AnalysisEngine {
             let extension = path.extension()?.to_str()?;
             let thresholds = self.config.get_thresholds(extension);
             let disabled_rules = super::ignore::get_disabled_rules(&content);
-            let clean = crate::uncomment::remove_comments(&content, extension, true);
+            let clean = remove_comments(&content, extension, true);
             let rep_res = repetition::analyze_repetition(&clean, thresholds.min_duplicate_lines);
 
             let window_size = thresholds.min_duplicate_lines;

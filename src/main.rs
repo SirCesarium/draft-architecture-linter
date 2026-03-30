@@ -6,8 +6,13 @@ use clap::{Parser, Subcommand};
 use console::style;
 use std::fs;
 use std::path::{Path, PathBuf};
-use swt::Config;
+use std::process::ExitCode;
 use swt::analyzer::AnalysisEngine;
+use swt::report::json::write_json_report;
+use swt::report::print_reports;
+use swt::uncomment::remove_comments;
+use swt::update::{check_for_updates, handle_update};
+use swt::{Config, FileReport};
 
 const ASCII: &str = r"
                             __ 
@@ -62,31 +67,31 @@ enum Commands {
     },
 }
 
-fn main() -> std::process::ExitCode {
+fn main() -> ExitCode {
     let args = Args::parse();
 
     match args.command {
         Some(Commands::Update) => {
-            return match swt::update::handle_update() {
-                Ok(()) => std::process::ExitCode::SUCCESS,
+            return match handle_update() {
+                Ok(()) => ExitCode::SUCCESS,
                 Err(e) => {
                     eprintln!("{} {}", style("Error updating Sweet:").red().bold(), e);
-                    std::process::ExitCode::FAILURE
+                    ExitCode::FAILURE
                 }
             };
         }
         Some(Commands::CheckUpdates) => {
-            swt::update::check_for_updates();
-            return std::process::ExitCode::SUCCESS;
+            check_for_updates();
+            return ExitCode::SUCCESS;
         }
         Some(Commands::Inspect { path }) => {
             return run_analysis(&path, args.json.as_ref(), args.quiet, true);
         }
         Some(Commands::Uncomment { path, aggressive }) => {
             if handle_uncomment(&path, aggressive) {
-                return std::process::ExitCode::SUCCESS;
+                return ExitCode::SUCCESS;
             }
-            return std::process::ExitCode::FAILURE;
+            return ExitCode::FAILURE;
         }
         None => {}
     }
@@ -99,7 +104,7 @@ fn run_analysis(
     #[allow(clippy::option_option)] json: Option<&Option<PathBuf>>,
     quiet: bool,
     inspect: bool,
-) -> std::process::ExitCode {
+) -> ExitCode {
     let config = Config::load(path);
     let engine = AnalysisEngine::new(path.to_path_buf(), config);
 
@@ -116,7 +121,7 @@ fn run_analysis(
                 style(" 📭 No supported files found.").yellow().bold()
             );
         }
-        return std::process::ExitCode::SUCCESS;
+        return ExitCode::SUCCESS;
     }
 
     let bitter_count = reports.iter().filter(|r| !r.is_sweet).count();
@@ -124,19 +129,19 @@ fn run_analysis(
     if let Some(json_opt) = json {
         handle_json_reporting(&reports, json_opt.as_ref());
     } else {
-        swt::report::print_reports(&reports, quiet, None);
+        print_reports(&reports, quiet, None);
     }
 
     if bitter_count > 0 {
-        std::process::ExitCode::FAILURE
+        ExitCode::FAILURE
     } else {
-        std::process::ExitCode::SUCCESS
+        ExitCode::SUCCESS
     }
 }
 
-fn handle_json_reporting(reports: &[swt::FileReport], json_opt: Option<&PathBuf>) {
+fn handle_json_reporting(reports: &[FileReport], json_opt: Option<&PathBuf>) {
     if let Some(path) = json_opt {
-        swt::report::json::write_json_report(reports, path);
+        write_json_report(reports, path);
     } else if let Ok(json) = serde_json::to_string_pretty(&reports) {
         println!("{json}");
     }
@@ -146,7 +151,7 @@ fn handle_uncomment(path: &Path, aggressive: bool) -> bool {
     match fs::read_to_string(path) {
         Ok(content) => {
             let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
-            let clean = swt::uncomment::remove_comments(&content, extension, aggressive);
+            let clean = remove_comments(&content, extension, aggressive);
             if fs::write(path, clean).is_ok() {
                 println!("{}", style("Uncommented!").cyan().bold());
                 true

@@ -73,6 +73,7 @@ pub struct RepetitionDetail {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     #[test]
     fn test_language_specific_defaults() {
@@ -100,8 +101,8 @@ mod tests {
 
     #[test]
     fn test_is_supported_file() {
-        assert!(Config::is_supported_file(std::path::Path::new("test.rs")));
-        assert!(!Config::is_supported_file(std::path::Path::new("test.txt")));
+        assert!(Config::is_supported_file(Path::new("test.rs")));
+        assert!(!Config::is_supported_file(Path::new("test.txt")));
     }
 
     #[cfg(feature = "schema")]

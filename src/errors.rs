@@ -1,6 +1,7 @@
 //! Custom error types for the Sweet analyzer.
 
 use miette::Diagnostic;
+use std::io;
 use thiserror::Error;
 
 /// Core error enumeration for all application-level failures.
@@ -9,7 +10,7 @@ pub enum SwtError {
     /// File system or I/O related failures.
     #[error("Failed to read file: {0}")]
     #[diagnostic(code(swt::io_error))]
-    IoError(#[from] std::io::Error),
+    IoError(#[from] io::Error),
 
     /// Configuration parsing or serialization failures.
     #[error("Failed to parse config: {0}")]
