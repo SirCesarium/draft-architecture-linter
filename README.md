@@ -22,7 +22,7 @@ By quantifying technical debt and identifying complex logic patterns, `Sweet` he
 
 Most linters focus on syntax; `Sweet` focuses on **maintainability**. It acts as a surgical tool to prevent the "Big Ball of Mud" anti-pattern by monitoring the physical and logical weight of your components.
 
-*   **Enforce SRP:** Identify "God Functions" and bloated files that take on too many responsibilities.
+*   **Maintain Maintainability:** Identify bloated files and excessive nesting that make code hard to reason about.
 *   **Encourage Decoupling:** Track dependency density to prevent tangled, hard-to-test modules.
 *   **Prevent Logic Bloat:** Detect deep nesting and cognitive complexity before they become technical debt.
 *   **Eliminate Redundancy:** Project-wide inspection to find duplicated logic that should be abstract or shared.

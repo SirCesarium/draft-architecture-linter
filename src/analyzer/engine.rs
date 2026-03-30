@@ -23,10 +23,10 @@ pub struct AnalysisEngine {
     config: Config,
 }
 
-/// Internal structure to hold report and file content during analysis.
+/// Internal structure to hold report and original file content.
 struct ProcessedFile {
     report: FileReport,
-    lines: Vec<String>,
+    content: String,
 }
 
 impl AnalysisEngine {
@@ -146,10 +146,7 @@ impl AnalysisEngine {
             }
         }
 
-        Some(ProcessedFile {
-            lines: content.lines().map(ToString::to_string).collect(),
-            report,
-        })
+        Some(ProcessedFile { report, content })
     }
 
     /// Finalizes the inspection by mapping duplicated chunks back to source files.
@@ -161,15 +158,14 @@ impl AnalysisEngine {
             .collect();
 
         for pf in processed_files {
+            let file_lines: Vec<&str> = pf.content.lines().collect();
             for (_, occurrences) in &duplicates {
-                // Find occurrences within this specific file.
                 let mut local_positions: Vec<usize> = occurrences
                     .iter()
                     .filter(|(path, _)| path == &pf.report.path)
                     .map(|(_, line)| *line)
                     .collect();
 
-                // Sort and deduplicate local positions to handle overlapping windows.
                 local_positions.sort_unstable();
                 local_positions.dedup();
 
@@ -178,15 +174,13 @@ impl AnalysisEngine {
                 }
 
                 for &start_line in &local_positions {
-                    // Check if this chunk is already accounted for in this report to avoid spam.
                     if pf.report.duplicates.iter().any(|d| d.line == start_line) {
                         continue;
                     }
 
-                    if start_line > 0 && start_line + 3 <= pf.lines.len() {
-                        let snippet = pf.lines[start_line - 1..start_line + 3].join("\n");
+                    if start_line > 0 && start_line + 3 <= file_lines.len() {
+                        let snippet = file_lines[start_line - 1..start_line + 3].join("\n");
 
-                        // Find other occurrences (excluding current one in current file).
                         let others: Vec<(PathBuf, usize)> = occurrences
                             .iter()
                             .filter(|(p, l)| p != &pf.report.path || *l != start_line)

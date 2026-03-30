@@ -22,7 +22,7 @@ pub fn analyze_repetition(content: &str, window_size: usize) -> RepetitionResult
         };
     }
 
-    let lines: Vec<String> = content.lines().map(ToString::to_string).collect();
+    let lines: Vec<&str> = content.lines().collect();
 
     if lines.len() < window_size {
         return RepetitionResult {

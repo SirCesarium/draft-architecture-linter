@@ -85,7 +85,7 @@ lsp = ["dep:tokio", "dep:tower-lsp"]
 
 [[bin]]
 name = "sweet-analyzer-lsp"
-path = "src/bin/lsp.rs"
+path = "src/bin/lsp_main.rs"
 required-features = ["lsp"]
 
 [[bin]]
