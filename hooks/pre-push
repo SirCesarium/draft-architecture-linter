@@ -9,7 +9,7 @@ cargo fmt -- --check
 
 # 2. Comprehensive Clippy Check (All features, All targets)
 echo "  ↳ Running Clippy (All features & targets)..."
-cargo clippy --all-targets --all-features -- -D warnings
+cargo clippy --all-targets --all-features -- -D warnings -D clippy::nursery
 
 # 3. Project tests
 echo "  ↳ Running project tests..."

@@ -146,7 +146,7 @@ fn handle_uncomment(path: &Path, aggressive: bool) -> bool {
     match fs::read_to_string(path) {
         Ok(content) => {
             let extension = path.extension().and_then(|s| s.to_str()).unwrap_or("");
-            let clean = swt::analyzer::uncomment::remove_comments(&content, extension, aggressive);
+            let clean = swt::uncomment::remove_comments(&content, extension, aggressive);
             if fs::write(path, clean).is_ok() {
                 println!("{}", style("Uncommented!").cyan().bold());
                 true

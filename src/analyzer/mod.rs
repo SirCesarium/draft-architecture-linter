@@ -5,7 +5,6 @@ pub mod engine;
 pub mod ignore;
 pub mod repetition;
 pub mod syntax;
-pub mod uncomment;
 pub mod volume;
 
 pub use engine::AnalysisEngine;
@@ -102,7 +101,7 @@ pub fn analyze_content<S: std::hash::BuildHasher>(
         complexity::find_deep_lines(content, indent_size, thresholds.max_depth)
     };
 
-    let clean_content = uncomment::remove_comments(content, extension, true);
+    let clean_content = crate::uncomment::remove_comments(content, extension, true);
     let rep_res = repetition::analyze_repetition(&clean_content, thresholds.min_duplicate_lines);
 
     let metrics = RawMetrics {

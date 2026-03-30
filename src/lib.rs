@@ -4,7 +4,8 @@
     clippy::panic,
     clippy::unwrap_used,
     clippy::expect_used,
-    clippy::pedantic
+    clippy::pedantic,
+    clippy::absolute_paths
 )]
 
 use serde::{Deserialize, Serialize};
@@ -15,6 +16,7 @@ pub mod config;
 pub mod errors;
 pub mod languages;
 pub mod report;
+pub mod uncomment;
 pub mod update;
 
 // Re-export core configuration types for easier access.
