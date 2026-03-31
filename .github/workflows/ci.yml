@@ -21,3 +21,19 @@ jobs:
           enable-clippy: "true"
           enable-fmt: "true"
           sweet-threshold: "."
+
+  test-multiplatform:
+    name: Tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v5
+      
+      - name: 🦀 Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        
+      - name: 🧪 Run Unit & Integration Tests
+        run: cargo test --all-features

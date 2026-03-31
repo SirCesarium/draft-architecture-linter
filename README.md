@@ -171,6 +171,17 @@ Disable specific checks via comments in the first 20 lines:
 
 To ignore a file entirely, use `@sweetignore`.
 
+## ⚡ Performance
+
+`Sweet` is designed for industrial-scale projects. Benchmarks performed on a standard development machine:
+
+| Task | Time | Throughput |
+| :--- | :--- | :--- |
+| **Standard File Analysis** (~400 LOC) | **2.27 ms** | ~440 files/sec |
+| **Heavy Repetition Analysis** (2k+ LOC) | **78.86 ms** | Stress test with global inspection |
+
+*Benchmarks powered by [Criterion](https://github.com/bheisler/criterion.rs).*
+
 ## 🤝 Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for technical specifications and how to add new languages.
