@@ -27,7 +27,7 @@ fn bench_standard_analysis(c: &mut Criterion) {
                 black_box(&disabled_rules),
                 black_box(true),
             )
-        })
+        });
     });
 }
 
@@ -52,7 +52,7 @@ fn bench_repetition_heavy(c: &mut Criterion) {
                 black_box(&disabled_rules),
                 black_box(true),
             )
-        })
+        });
     });
 }
 
