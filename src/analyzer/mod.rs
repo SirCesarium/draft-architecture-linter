@@ -1,12 +1,17 @@
-//! Central orchestration for individual file analysis.
+//! Core analysis orchestration and engine.
+//!
+//! This module manages the lifecycle of a file analysis session:
+//! 1. Discover files via the `ignore` walker.
+//! 2. Mmap files for zero-copy access.
+//! 3. Dispatch to the `UnifiedScanner` for single-pass metrics.
+//! 4. (Optional) Run project-wide repetition detection.
+//!
+//! The entry point is `AnalysisEngine`, which uses `rayon` for parallel processing.
 
-pub mod complexity;
 pub mod engine;
 pub mod ignore;
 pub mod repetition;
 pub mod scanner;
-pub mod syntax;
-pub mod volume;
 
 pub use engine::AnalysisEngine;
 

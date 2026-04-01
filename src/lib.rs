@@ -1,4 +1,9 @@
-//! Hierarchical configuration and global state management.
+//! 🍬 Sweet: A blazing-fast code health and architecture analyzer.
+//!
+//! Sweet quantifying technical debt and identifies complex logic patterns,
+//! helping teams adhere to core engineering principles like SRP and DRY.
+//! It is designed for high performance, capable of analyzing massive codebases
+//! like the Linux Kernel in seconds.
 
 #![deny(
     clippy::panic,
@@ -8,9 +13,6 @@
     clippy::absolute_paths
 )]
 
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-
 pub mod analyzer;
 pub mod config;
 pub mod errors;
@@ -19,59 +21,12 @@ pub mod report;
 pub mod uncomment;
 pub mod update;
 
-// Re-export core configuration types for easier access.
+// Re-export core types for public API stability and convenience.
 pub use config::Config;
 pub use config::thresholds::{
     PartialThresholds, RuleSeverities, Severity, Thresholds, ThresholdsConfig,
 };
-
-/// A single rule violation with its importance level.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Issue {
-    /// Description of the problem.
-    pub message: String,
-    /// Importance level.
-    pub severity: Severity,
-}
-
-/// Analysis results for a single source file.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct FileReport {
-    /// Absolute or relative path to the file.
-    pub path: PathBuf,
-    /// Measured source lines.
-    pub lines: usize,
-    /// Measured import count.
-    pub imports: usize,
-    /// Measured nesting depth.
-    pub max_depth: usize,
-    /// Measured repetition percentage.
-    pub repetition: f64,
-    /// True if no Error-level thresholds were exceeded.
-    pub is_sweet: bool,
-    /// List of descriptive issue messages.
-    pub issues: Vec<Issue>,
-    /// Effective configuration used for this file.
-    pub config: Option<Config>,
-    /// Details about duplicated code chunks.
-    pub duplicates: Vec<RepetitionDetail>,
-    /// Lines where the nesting depth exceeds the threshold.
-    pub deep_lines: Vec<(usize, usize)>,
-    /// Internal: Content without comments for repetition analysis.
-    #[serde(skip)]
-    pub clean_content: Vec<u8>,
-}
-
-/// Details about a specific duplicated code chunk.
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct RepetitionDetail {
-    /// The actual code content that is repeated.
-    pub content: String,
-    /// Starting line number in the file.
-    pub line: usize,
-    /// Other files where this same chunk appears.
-    pub occurrences: Vec<(PathBuf, usize)>,
-}
+pub use report::{FileReport, Issue, RepetitionDetail};
 
 #[cfg(test)]
 mod tests {

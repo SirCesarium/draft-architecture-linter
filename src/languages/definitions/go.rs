@@ -20,33 +20,7 @@ impl Language for Go {
     }
 
     fn import_keywords(&self) -> &'static [&'static str] {
-        &["import"]
-    }
-
-    fn count_imports(&self, content: &str) -> usize {
-        let mut count = 0;
-        let mut in_block = false;
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("import (") {
-                in_block = true;
-                continue;
-            }
-            if in_block {
-                if trimmed == ")" {
-                    in_block = false;
-                    continue;
-                }
-                if !trimmed.is_empty() && !trimmed.starts_with("//") {
-                    count += 1;
-                }
-                continue;
-            }
-            if trimmed.starts_with("import \"") || trimmed.starts_with("import ") {
-                count += 1;
-            }
-        }
-        count
+        &["import", "import ("]
     }
 
     fn default_thresholds(&self) -> crate::Thresholds {

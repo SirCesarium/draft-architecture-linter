@@ -4,22 +4,23 @@ Thank you for your interest in improving Sweet! This guide provides technical sp
 
 ---
 
-## 🏗️ Project Structure
+## 🏗️ Project Architecture (Single-Pass Zero-Copy)
 
-- **`src/`**: The Rust core.
-  - **`analyzer/`**: Logic for metrics (complexity, repetition, nesting depth, etc.).
-  - **`languages/`**: Language definitions and the Strategy Pattern registry.
-  - **`config/`**: Configuration resolution and hierarchical threshold merging.
-  - **`bin/lsp.rs`**: The Language Server Protocol implementation.
-  - **`main.rs`**: CLI entry point.
-- **`editors/vscode/`**: VS Code extension (TypeScript).
-- **`schema.json`**: Auto-generated JSON schema for `.swtrc` validation.
+Sweet is built for industrial-grade performance. Unlike traditional analyzers that read files multiple times, Sweet uses a **Unified Single-Pass Engine**:
+
+1.  **Discovery**: The `ignore` walker finds files respecting `.gitignore`.
+2.  **Memory Mapping**: Files are mapped into memory using `memmap2` for zero-copy access.
+3.  **Unified Scan**: The `scanner::scan` function traverses the byte buffer **exactly once**.
+    - It tracks nesting depth via indentation.
+    - It identifies imports using language-specific keywords.
+    - It strips comments on-the-fly to produce a "clean" buffer for repetition analysis.
+4.  **Repetition Analysis**: A specialized module computes hashes of the clean buffer to find project-wide clones.
 
 ---
 
 ## 🚀 Adding a New Language
 
-Sweet uses the **Strategy Pattern** to handle language-specific rules. To add support for a new language (e.g., **Go**), follow these steps:
+Sweet uses the **Strategy Pattern** to handle language-specific rules. Adding a language is purely declarative.
 
 ### 1. Define the Language Strategy
 Create a new file in `src/languages/definitions/go.rs`:
@@ -34,9 +35,14 @@ impl Language for Go {
     fn extensions(&self) -> &'static [&'static str] { &["go"] }
     fn line_comment(&self) -> Option<&'static str> { Some("//") }
     fn block_comment(&self) -> Option<(&'static str, &'static str)> { Some(("/*", "*/")) }
-    fn import_keywords(&self) -> &'static [&'static str] { &["import"] }
+    fn import_keywords(&self) -> &'static [&'static str] { 
+        &["import", "import ("] 
+    }
     
-    // Default thresholds for Go (optional override)
+    // Optional: Number of spaces per indent level (default: 4)
+    fn indent_size(&self) -> usize { 8 }
+
+    // Optional: Default thresholds specifically for this language
     fn default_thresholds(&self) -> crate::Thresholds {
         crate::Thresholds {
             max_lines: 400,
@@ -47,52 +53,36 @@ impl Language for Go {
 }
 ```
 
-### 2. Handling Complex Syntax (e.g., Block Imports)
-If a language has non-standard syntax that the default keyword-based counter cannot handle, you can override the trait methods directly.
+### 2. Registration
+To make the language active, you must register it in three places:
 
-For example, Go's `import (...)` blocks:
+1.  **Expose Module**: Add `pub mod go;` to `src/languages/definitions/mod.rs`.
+2.  **Register in Engine**: Add `Box::new(definitions::go::Go)` to `LanguageRegistry::new()` in `src/languages/mod.rs`.
+3.  **Update Config Schema**: 
+    - Add the extension (`go`) to the `ThresholdsOverrides` struct in `src/config/thresholds.rs`.
+    - Update the `get()` and `extend()` methods in that same file to handle the new field.
 
-```rust
-impl Language for Go {
-    // ...
-    fn count_imports(&self, content: &str) -> usize {
-        // Implement custom logic to count package declarations 
-        // inside both single-line and block imports.
-        let mut count = 0;
-        let mut in_block = false;
-        for line in content.lines() {
-            let trimmed = line.trim();
-            if trimmed.starts_with("import (") { in_block = true; continue; }
-            if in_block && trimmed == ")" { in_block = false; continue; }
-            if in_block && !trimmed.is_empty() { count += 1; }
-            if !in_block && trimmed.starts_with("import \"") { count += 1; }
-        }
-        count
-    }
-}
-```
-
-### 3. Registration
-1.  **Definitions**: Add `pub mod go;` to `src/languages/definitions/mod.rs`.
-2.  **Registry**: Add `Box::new(definitions::go::Go)` to `LanguageRegistry::new()` in `src/languages/mod.rs`.
-3.  **Config**: Add the extension (`go`) to `ThresholdsOverrides` in `src/config/thresholds.rs` and update its `get()` and `extend()` methods.
-
-### 4. VS Code Integration
-1.  **`package.json`**: Add the language to `activationEvents` and the `languages` contribution point.
-2.  **`extension.ts`**: Add the language ID to the `supportedLanguages` array.
+### 3. VS Code Integration
+1.  **`editors/vscode/package.json`**: Add the language ID to the `languages` contribution point.
+2.  **`editors/vscode/src/extension.ts`**: Add the language ID to the `supportedLanguages` array to enable LSP features.
 
 ---
 
 ## 🧪 Quality Standards
 
-We enforce strict engineering standards to keep Sweet "Sweet":
+We enforce strict engineering standards to maintain Sweet's performance and reliability:
 
-- **No Panics**: Use `Result` and `Option` handling. Avoid `unwrap()` or `expect()` in production code (enforced by Clippy).
-- **Performance**: Analysis must remain O(n). Avoid complex regex in hot paths; prefer string slices and iterators.
-- **Validation**: Run `./hooks/pre-push` before submitting. It executes:
-  - `cargo fmt --all -- --check`
-  - `cargo clippy --all-targets --all-features -- -D warnings`
-  - `cargo test --all-features`
+- **Zero-Copy First**: Avoid allocating `String` or `Vec` inside the scanner loop. Use byte slices (`&[u8]`) and offsets.
+- **No Panics**: Use `Result` and `Option`. The codebase has a strict `#![deny(clippy::unwrap_used)]`.
+- **Pedantic Clippy**: We use `clippy::pedantic`. All contributions must pass without warnings.
+- **Performance Regression**: If your change affects the core loop, run `cargo bench` to ensure no performance loss.
+
+### Validation Workflow
+Run the pre-push hook before submitting a PR:
+```bash
+./hooks/pre-push
+```
+This ensures formatting, lints, and tests are perfect.
 
 ---
 

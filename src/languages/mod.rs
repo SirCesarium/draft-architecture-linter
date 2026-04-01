@@ -1,4 +1,13 @@
-//! Strategy pattern for language-specific analysis rules.
+//! Language Extensibility System.
+//!
+//! @swt-disable max-repetition
+//!
+//! This module implements the Strategy pattern to define language-specific
+//! analysis rules. To add support for a new language:
+//!
+//! 1. Create a new struct in `definitions/`.
+//! 2. Implement the `Language` trait for it.
+//! 3. Register the new struct in `LanguageRegistry::new()`.
 
 pub mod c_base;
 pub mod definitions;
@@ -7,23 +16,26 @@ use std::collections::HashMap;
 use std::sync::OnceLock;
 
 /// Interface for language-specific analysis strategies.
+///
+/// Defines the syntax rules (comments, imports) and thresholds
+/// required for analyzing a specific programming language.
 pub trait Language: Send + Sync {
     /// Friendly name of the language (e.g., "Rust").
     fn name(&self) -> &'static str;
 
-    /// File extensions associated with this language.
+    /// File extensions associated with this language (without the dot).
     fn extensions(&self) -> &'static [&'static str];
 
-    /// Delimiter for single-line comments.
+    /// Delimiter for single-line comments (e.g., Some("//")).
     fn line_comment(&self) -> Option<&'static str>;
 
-    /// Start and end delimiters for multi-line block comments.
+    /// Start and end delimiters for multi-line block comments (e.g., Some(("/*", "*/"))).
     fn block_comment(&self) -> Option<(&'static str, &'static str)>;
 
-    /// Keywords used to declare imports or dependencies.
+    /// Keywords used to declare imports or dependencies (e.g., &[`use`, `import`]).
     fn import_keywords(&self) -> &'static [&'static str];
 
-    /// Number of spaces representing one level of indentation.
+    /// Number of spaces representing one level of indentation. Defaults to 4.
     fn indent_size(&self) -> usize {
         4
     }
@@ -31,27 +43,6 @@ pub trait Language: Send + Sync {
     /// Default health thresholds specifically tuned for this language.
     fn default_thresholds(&self) -> crate::Thresholds {
         crate::Thresholds::default()
-    }
-
-    /// Count the number of imports in the content using the language's specific logic.
-    fn count_imports(&self, content: &str) -> usize {
-        let keywords = self.import_keywords();
-        content
-            .lines()
-            .filter(|line| {
-                let trimmed = line.trim_start();
-                if trimmed.is_empty() {
-                    return false;
-                }
-                keywords.iter().any(|&kw| {
-                    if kw.ends_with('(') || kw.ends_with('"') {
-                        trimmed.contains(kw)
-                    } else {
-                        trimmed.starts_with(kw)
-                    }
-                })
-            })
-            .count()
     }
 }
 
@@ -109,6 +100,8 @@ impl LanguageRegistry {
     /// Return a list of all supported file extensions.
     #[must_use]
     pub fn supported_extensions(&self) -> Vec<&'static str> {
-        self.extension_map.keys().copied().collect()
+        let mut extensions: Vec<&'static str> = self.extension_map.keys().copied().collect();
+        extensions.sort_unstable();
+        extensions
     }
 }

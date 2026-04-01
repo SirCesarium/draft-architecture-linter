@@ -1,23 +1,18 @@
 //! High-performance single-pass file analysis scanner.
-//!
-//! The `UnifiedScanner` traverses the file content only once, simultaneously
-//! counting lines, calculating nesting depth, identifying imports, and
-//! stripping comments for repetition analysis.
 
 use crate::languages::{Language, LanguageRegistry};
 use std::str;
 
-/// Results gathered from a single-pass scan of a source file.
+/// Type alias for 1-based line numbers.
+pub type LineNumber = usize;
+/// Type alias for byte offsets within a file buffer.
+pub type ByteOffset = usize;
+
 pub struct ScanResult {
-    /// Total number of source lines.
     pub lines: usize,
-    /// Total number of import/include statements found.
     pub imports: usize,
-    /// Maximum nesting depth based on indentation.
     pub max_depth: usize,
-    /// Line numbers where the nesting depth exceeds a threshold.
-    pub deep_lines: Vec<(usize, usize)>,
-    /// Content without comments, used for repetition analysis.
+    pub deep_lines: Vec<(LineNumber, usize)>,
     pub clean_content: Vec<u8>,
 }
 
@@ -30,7 +25,6 @@ struct ScannerState<'a> {
     block_end: Option<&'a [u8]>,
 }
 
-/// Perform a single-pass analysis on the provided content.
 #[must_use]
 pub fn scan(
     content: &[u8],
@@ -39,7 +33,6 @@ pub fn scan(
     indent_size: usize,
 ) -> ScanResult {
     let lang = LanguageRegistry::get().get_by_extension(extension);
-
     let state = ScannerState {
         import_keywords: lang.map_or(&[] as &[&str], Language::import_keywords),
         line_comment: lang.and_then(Language::line_comment).map(str::as_bytes),
@@ -62,7 +55,8 @@ pub fn scan(
     };
 
     let (mut flags, mut line_data) = (ParseFlags::default(), LineData::new());
-    let mut i = 0;
+    let mut i: ByteOffset = 0;
+
     while i < content.len() {
         let current = content[i];
         if current == b'\n' {
@@ -147,8 +141,8 @@ struct ParseFlags {
 struct LineData {
     is_at_start: bool,
     leading_whitespace: usize,
-    start_offset: usize,
-    num: usize,
+    start_offset: ByteOffset,
+    num: LineNumber,
 }
 
 impl LineData {
@@ -161,7 +155,7 @@ impl LineData {
         }
     }
 
-    const fn reset(&mut self, next_start: usize) {
+    const fn reset(&mut self, next_start: ByteOffset) {
         self.is_at_start = true;
         self.leading_whitespace = 0;
         self.start_offset = next_start;
@@ -171,7 +165,7 @@ impl LineData {
 
 fn handle_string_content(
     content: &[u8],
-    i: &mut usize,
+    i: &mut ByteOffset,
     flags: &mut ParseFlags,
     clean_content: &mut Vec<u8>,
 ) {
@@ -191,7 +185,7 @@ fn handle_string_content(
 fn process_line_end(
     content: &[u8],
     line: &LineData,
-    end_offset: usize,
+    end_offset: ByteOffset,
     res: &mut ScanResult,
     state: &ScannerState,
 ) {
