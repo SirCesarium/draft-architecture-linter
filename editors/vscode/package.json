@@ -2,7 +2,7 @@
   "name": "sweet",
   "displayName": "Sweet",
   "description": "Blazing-fast code health and architecture analyzer.",
-  "version": "4.1.3",
+  "version": "5.0.0-rc.4",
   "publisher": "SirCesarium",
   "icon": "icon.png",
   "engines": {
