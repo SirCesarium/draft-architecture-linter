@@ -1,39 +1,10 @@
-use crate::languages::Language;
+use crate::define_language;
 
-pub struct PHP;
-
-impl Language for PHP {
-    fn name(&self) -> &'static str {
-        "PHP"
-    }
-
-    fn extensions(&self) -> &'static [&'static str] {
-        &["php"]
-    }
-
-    fn line_comment(&self) -> Option<&'static str> {
-        Some("//")
-    }
-
-    fn block_comment(&self) -> Option<(&'static str, &'static str)> {
-        Some(("/*", "*/"))
-    }
-
-    fn import_keywords(&self) -> &'static [&'static str] {
-        &[
-            "use ",
-            "require ",
-            "require_once ",
-            "include ",
-            "include_once ",
-        ]
-    }
-
-    fn default_thresholds(&self) -> crate::Thresholds {
-        crate::Thresholds {
-            max_lines: 500,
-            max_imports: 30,
-            ..Default::default()
-        }
-    }
-}
+define_language!(
+    PHP,
+    "PHP",
+    extensions: ["php"],
+    line_comment: Some("//"),
+    block_comment: Some(("/*", "*/")),
+    import_keywords: ["use", "require", "include", "namespace"]
+);

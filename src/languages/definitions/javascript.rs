@@ -1,33 +1,10 @@
-use crate::languages::{Language, c_base::CBaseRules};
+use crate::define_language;
 
-pub struct JavaScript;
-
-impl Language for JavaScript {
-    fn name(&self) -> &'static str {
-        "JavaScript"
-    }
-
-    fn extensions(&self) -> &'static [&'static str] {
-        &["js", "mjs", "cjs", "jsx"]
-    }
-
-    fn line_comment(&self) -> Option<&'static str> {
-        Some(CBaseRules::LINE_COMMENT)
-    }
-
-    fn block_comment(&self) -> Option<(&'static str, &'static str)> {
-        Some(CBaseRules::BLOCK_COMMENT)
-    }
-
-    fn import_keywords(&self) -> &'static [&'static str] {
-        &["import ", "require("]
-    }
-
-    fn default_thresholds(&self) -> crate::Thresholds {
-        crate::Thresholds {
-            max_lines: 400,
-            max_imports: 30,
-            ..Default::default()
-        }
-    }
-}
+define_language!(
+    JavaScript,
+    "JavaScript",
+    extensions: ["js", "mjs", "cjs", "jsx"],
+    line_comment: Some("//"),
+    block_comment: Some(("/*", "*/")),
+    import_keywords: ["import", "require("]
+);

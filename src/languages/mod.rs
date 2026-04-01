@@ -6,7 +6,7 @@
 //! analysis rules. To add support for a new language:
 //!
 //! 1. Create a new struct in `definitions/`.
-//! 2. Implement the `Language` trait for it.
+//! 2. Implement the `Language` trait for it (usually via `define_language!`).
 //! 3. Register the new struct in `LanguageRegistry::new()`.
 
 pub mod c_base;
@@ -44,6 +44,33 @@ pub trait Language: Send + Sync {
     fn default_thresholds(&self) -> crate::Thresholds {
         crate::Thresholds::default()
     }
+}
+
+/// Helper macro to define new languages with minimal boilerplate.
+#[macro_export]
+macro_rules! define_language {
+    (
+        $struct_name:ident,
+        $display_name:expr,
+        extensions: [$($ext:expr),*],
+        line_comment: $line_comment:expr,
+        block_comment: $block_comment:expr,
+        import_keywords: [$($kw:expr),*]
+        $(, thresholds: $thresholds:expr )?
+    ) => {
+        pub struct $struct_name;
+
+        impl $crate::languages::Language for $struct_name {
+            fn name(&self) -> &'static str { $display_name }
+            fn extensions(&self) -> &'static [&'static str] { &[$($ext),*] }
+            fn line_comment(&self) -> Option<&'static str> { $line_comment }
+            fn block_comment(&self) -> Option<(&'static str, &'static str)> { $block_comment }
+            fn import_keywords(&self) -> &'static [&'static str] { &[$($kw),*] }
+            $(
+                fn default_thresholds(&self) -> $crate::Thresholds { $thresholds }
+            )?
+        }
+    };
 }
 
 /// Thread-safe registry for managing supported languages.

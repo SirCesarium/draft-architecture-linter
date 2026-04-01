@@ -1,33 +1,10 @@
-use crate::languages::{Language, c_base::CBaseRules};
+use crate::define_language;
 
-pub struct CSharp;
-
-impl Language for CSharp {
-    fn name(&self) -> &'static str {
-        "C#"
-    }
-
-    fn extensions(&self) -> &'static [&'static str] {
-        &["cs"]
-    }
-
-    fn line_comment(&self) -> Option<&'static str> {
-        Some(CBaseRules::LINE_COMMENT)
-    }
-
-    fn block_comment(&self) -> Option<(&'static str, &'static str)> {
-        Some(CBaseRules::BLOCK_COMMENT)
-    }
-
-    fn import_keywords(&self) -> &'static [&'static str] {
-        &["using "]
-    }
-
-    fn default_thresholds(&self) -> crate::Thresholds {
-        crate::Thresholds {
-            max_lines: 500,
-            max_imports: 30,
-            ..Default::default()
-        }
-    }
-}
+define_language!(
+    CSharp,
+    "C#",
+    extensions: ["cs"],
+    line_comment: Some("//"),
+    block_comment: Some(("/*", "*/")),
+    import_keywords: ["using", "namespace"]
+);
