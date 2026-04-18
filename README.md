@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="editors/vscode/icon.svg" width="128" alt="Sweet Icon">
+  <img src="https://github.com/user-attachments/assets/63a0daf3-c2f4-44ec-b252-03708d70c70f" alt="Sweet ASCII Art">
 </p>
 
 <p align="center">
