@@ -19,6 +19,9 @@ jobs:
         with:
           components: clippy, rustfmt
 
+      - name: ⚡ Cache Rust Dependencies
+        uses: swatinem/rust-cache@v2
+
       - name: ✨ Check Formatting
         run: cargo fmt --all -- --check
 
@@ -37,6 +40,11 @@ jobs:
       
       - name: 🦀 Setup Rust
         uses: dtolnay/rust-toolchain@stable
+
+      - name: ⚡ Cache Rust Dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.os }}
         
       - name: 🧪 Run Unit & Integration Tests
         run: cargo test --all-features
