@@ -61,23 +61,58 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: 🛠️ Build CLI (swt)
-        uses: sircesarium/refinery-rs@v2.0
+      - name: 🦀 Setup Rust
+        uses: dtolnay/rust-toolchain@stable
         with:
-          target: ${{ matrix.target }}
-          binary-name: "swt"
-          use-cross: ${{ matrix.use_cross || false }}
-          export-libs: false
+          targets: ${{ matrix.target }}
 
-      - name: 🛠️ Build LSP (sweet-lsp)
-        if: ${{ matrix.build_lsp }}
-        uses: sircesarium/refinery-rs@v2.0
-        with:
-          target: ${{ matrix.target }}
-          binary-name: "sweet-analyzer-lsp"
-          features: "lsp"
-          use-cross: ${{ matrix.use_cross || false }}
-          export-libs: false
+      - name: 🛠️ Install Cross
+        if: ${{ matrix.use_cross }}
+        uses: taiki-e/install-action@cross
+
+      - name: 🏗️ Build Binaries
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          
+          # Build CLI
+          if [ "${{ matrix.use_cross }}" = "true" ]; then
+            cross build --release --target ${{ matrix.target }}
+          else
+            cargo build --release --target ${{ matrix.target }}
+          fi
+          
+          # Build LSP if needed
+          if [ "${{ matrix.build_lsp }}" = "true" ]; then
+            if [ "${{ matrix.use_cross }}" = "true" ]; then
+              cross build --release --target ${{ matrix.target }} --bin sweet-analyzer-lsp --features lsp
+            else
+              cargo build --release --target ${{ matrix.target }} --bin sweet-analyzer-lsp --features lsp
+            fi
+          fi
+
+      - name: 📦 Move & Rename Artifacts
+        shell: bash
+        run: |
+          EXE_SUFFIX=""
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then EXE_SUFFIX=".exe"; fi
+          
+          # Move CLI
+          cp target/${{ matrix.target }}/release/swt${EXE_SUFFIX} artifacts/swt-${{ matrix.target }}${EXE_SUFFIX}
+          
+          # Move LSP (mapping correctly for extension)
+          if [ "${{ matrix.build_lsp }}" = "true" ]; then
+            # Map specific targets to simplified names used by download script
+            DEST_NAME="sweet-lsp-${{ matrix.os == 'ubuntu-latest' && 'linux' || (matrix.os == 'windows-latest' && 'win' || 'macos') }}"
+            if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then DEST_NAME="sweet-lsp-linux-arm64"; fi
+            if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then DEST_NAME="sweet-lsp-macos-arm64"; fi
+            if [ "${{ matrix.target }}" = "x86_64-apple-darwin" ]; then DEST_NAME="sweet-lsp-macos"; fi
+            if [ "${{ matrix.target }}" = "x86_64-unknown-linux-gnu" ]; then DEST_NAME="sweet-lsp-linux"; fi
+            if [ "${{ matrix.target }}" = "x86_64-pc-windows-msvc" ]; then DEST_NAME="sweet-lsp-win.exe"; fi
+
+            cp target/${{ matrix.target }}/release/sweet-analyzer-lsp${EXE_SUFFIX} artifacts/${DEST_NAME}
+          fi
+        shell: bash
 
       - name: 📦 Generate .deb & .rpm
         if: ${{ matrix.package && matrix.os == 'ubuntu-latest' }}
@@ -85,19 +120,15 @@ jobs:
           cargo install cargo-deb cargo-generate-rpm
           cargo deb --target ${{ matrix.target }} --no-build
           cargo generate-rpm --target ${{ matrix.target }}
-          mkdir -p artifacts/
           cp target/${{ matrix.target }}/debian/*.deb artifacts/
           cp target/generate-rpm/*.rpm artifacts/ || cp target/${{ matrix.target }}/generate-rpm/*.rpm artifacts/
 
       - name: 📦 Generate .msi
         if: ${{ matrix.package && matrix.os == 'windows-latest' }}
         run: |
-          mkdir -p artifacts/
           mkdir -p target/${{ matrix.target }}/release
-
-          cp artifacts/swt.exe target/${{ matrix.target }}/release/swt.exe || cp artifacts/swt_${{ matrix.target }}.exe target/${{ matrix.target }}/release/swt.exe || true
-          cp artifacts/sweet-analyzer-lsp.exe target/${{ matrix.target }}/release/sweet-analyzer-lsp.exe || cp artifacts/sweet-analyzer-lsp_${{ matrix.target }}.exe target/${{ matrix.target }}/release/sweet-analyzer-lsp.exe || true
-
+          cp target/${{ matrix.target }}/release/swt.exe target/${{ matrix.target }}/release/swt.exe
+          cp target/${{ matrix.target }}/release/sweet-analyzer-lsp.exe target/${{ matrix.target }}/release/sweet-analyzer-lsp.exe
           cargo install cargo-wix
           cargo wix --target ${{ matrix.target }} --no-build -o artifacts/
         shell: bash
@@ -134,6 +165,6 @@ jobs:
             all-artifacts/*.msi
             all-artifacts/*.deb
             all-artifacts/*.rpm
-            all-artifacts/swt*
-            all-artifacts/sweet-analyzer-lsp*
+            all-artifacts/swt-*
+            all-artifacts/sweet-lsp-*
           generate_release_notes: true
