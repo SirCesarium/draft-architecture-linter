@@ -9,8 +9,8 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use swt::Config;
-use swt::analyzer::{analyze_content, AnalysisEngine};
 use swt::analyzer::ignore::get_disabled_rules;
+use swt::analyzer::{AnalysisEngine, analyze_content};
 use swt::languages::{Language, LanguageRegistry};
 use tokio::sync::RwLock;
 use tokio::task::JoinHandle;
@@ -221,7 +221,7 @@ impl LanguageServer for Backend {
                         .iter()
                         .any(|root| canonical_path.starts_with(root))
                 {
-                let () = client
+                    let () = client
                         .publish_diagnostics(uri_clone.clone(), Vec::new(), None)
                         .await;
                     return;

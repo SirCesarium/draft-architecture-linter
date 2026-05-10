@@ -35,9 +35,11 @@ jobs:
           - target: aarch64-unknown-linux-gnu
             os: ubuntu-latest
             use_cross: true
+            build_lsp: true
           - target: aarch64-unknown-linux-musl
             os: ubuntu-latest
             use_cross: true
+            build_lsp: true
           - target: armv7-unknown-linux-gnueabihf
             os: ubuntu-latest
             use_cross: true
@@ -112,6 +114,7 @@ jobs:
 
             cp target/${{ matrix.target }}/release/sweet-analyzer-lsp${EXE_SUFFIX} artifacts/${DEST_NAME}
           fi
+
       - name: 📦 Generate .deb & .rpm
         if: ${{ matrix.package && matrix.os == 'ubuntu-latest' }}
         run: |
@@ -124,9 +127,6 @@ jobs:
       - name: 📦 Generate .msi
         if: ${{ matrix.package && matrix.os == 'windows-latest' }}
         run: |
-          mkdir -p target/${{ matrix.target }}/release
-          cp target/${{ matrix.target }}/release/swt.exe target/${{ matrix.target }}/release/swt.exe
-          cp target/${{ matrix.target }}/release/sweet-analyzer-lsp.exe target/${{ matrix.target }}/release/sweet-analyzer-lsp.exe
           cargo install cargo-wix
           cargo wix --target ${{ matrix.target }} --no-build -o artifacts/
         shell: bash
@@ -164,5 +164,5 @@ jobs:
             all-artifacts/*.deb
             all-artifacts/*.rpm
             all-artifacts/swt-*
-            all-artifacts/sweet-lsp-*
+            all-artifacts/sweet-lsp*
           generate_release_notes: true
