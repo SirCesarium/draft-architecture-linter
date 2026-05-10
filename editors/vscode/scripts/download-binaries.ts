@@ -3,16 +3,16 @@ import * as path from 'node:path';
 import { get } from 'node:https';
 import { chmodSync, existsSync, mkdirSync } from 'node:fs';
 
-const VERSION = '5.0.0-rc.7';
+const VERSION = '5.0.0-rc.8';
 const REPO = 'SirCesarium/sweet';
 const BIN_DIR = path.join(__dirname, '..', 'bin');
 
 const targets = [
-  { src: `sweet-lsp_x86_64-unknown-linux-gnu`, dest: 'sweet-lsp-linux' },
-  { src: `sweet-lsp_aarch64-unknown-linux-gnu`, dest: 'sweet-lsp-linux-arm64' },
-  { src: `sweet-lsp_x86_64-pc-windows-msvc.exe`, dest: 'sweet-lsp-win.exe' },
-  { src: `sweet-lsp_aarch64-apple-darwin`, dest: 'sweet-lsp-macos-arm64' },
-  { src: `sweet-lsp_x86_64-apple-darwin`, dest: 'sweet-lsp-macos' },
+  { src: 'sweet-lsp-linux', dest: 'sweet-lsp-linux' },
+  { src: 'sweet-lsp-linux-arm64', dest: 'sweet-lsp-linux-arm64' },
+  { src: 'sweet-lsp-win.exe', dest: 'sweet-lsp-win.exe' },
+  { src: 'sweet-lsp-macos-arm64', dest: 'sweet-lsp-macos-arm64' },
+  { src: 'sweet-lsp-macos', dest: 'sweet-lsp-macos' },
 ];
 
 async function download(url: string, dest: string): Promise<void> {
