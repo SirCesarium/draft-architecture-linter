@@ -1,8 +1,9 @@
 // @swt-disable max-repetition
 //! Benchmarks for the Sweet code analysis engine.
 
-use criterion::{Criterion, black_box, criterion_group, criterion_main};
+use criterion::{criterion_group, criterion_main, Criterion};
 use std::collections::HashSet;
+use std::hint::black_box;
 use std::path::PathBuf;
 use swt::Config;
 use swt::analyzer::analyze_content;
