@@ -1,12 +1,7 @@
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/63a0daf3-c2f4-44ec-b252-03708d70c70f" alt="Sweet ASCII Art">
-</p>
-
-<p align="center">
-  <a href="https://crates.io/crates/swt"><img src="https://img.shields.io/crates/v/swt.svg" alt="Crates.io"></a>
-  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-yellow.svg" alt="License: MIT"></a>
-  <a href="https://github.com/SirCesarium/sweet/actions"><img src="https://github.com/SirCesarium/sweet/workflows/CI/badge.svg" alt="Build Status"></a>
-</p>
+> [!WARNING]
+> This version of Sweet is a functional prototype largely generated with AI for proof-of-concept purposes. As such, it may lack rigorous architectural standards.
+> 
+> The project will be rewritten from scratch under the [@MechanicalLabs](https://github/MechanicalLabs) organization to ensure best practices, performance optimization, and full manual audit.
 
 <h1 align="center">🍬 Sweet (swt)</h1>
 
