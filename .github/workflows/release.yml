@@ -10,7 +10,21 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  publish-cargo:
+    name: Publish to Crates.io
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: 🦀 Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: ⚡ Cache Rust Dependencies
+        uses: swatinem/rust-cache@v2
+      - name: 🚢 Publish
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish
+
+  build-binaries:
     name: Build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
     strategy:
@@ -21,7 +35,6 @@ jobs:
           - target: x86_64-unknown-linux-gnu
             os: ubuntu-latest
             build_lsp: true
-            package: true
           - target: x86_64-unknown-linux-musl
             os: ubuntu-latest
             use_cross: true
@@ -47,7 +60,6 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
             build_lsp: true
-            package: true
           - target: i686-pc-windows-msvc
             os: windows-latest
           - target: aarch64-pc-windows-msvc
@@ -73,95 +85,123 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - name: 🛠️ Install Tools
+      - name: 🛠️ Install Cross
+        if: ${{ matrix.use_cross }}
         uses: taiki-e/install-action@v2
         with:
-          tool: cross,cargo-deb,cargo-generate-rpm,cargo-wix,cargo-binstall
+          tool: cross
 
       - name: 🏗️ Build Binaries
         shell: bash
         run: |
           mkdir -p artifacts
+          BUILD_CMD="cargo build"
+          if [ "${{ matrix.use_cross }}" = "true" ]; then BUILD_CMD="cross build"; fi
           
-          # Build CLI
-          if [ "${{ matrix.use_cross }}" = "true" ]; then
-            cross build --release --target ${{ matrix.target }}
-          else
-            cargo build --release --target ${{ matrix.target }}
-          fi
+          $BUILD_CMD --release --target ${{ matrix.target }}
           
-          # Build LSP if needed
           if [ "${{ matrix.build_lsp }}" = "true" ]; then
-            if [ "${{ matrix.use_cross }}" = "true" ]; then
-              cross build --release --target ${{ matrix.target }} --bin sweet-analyzer-lsp --features lsp
-            else
-              cargo build --release --target ${{ matrix.target }} --bin sweet-analyzer-lsp --features lsp
-            fi
+            $BUILD_CMD --release --target ${{ matrix.target }} --bin sweet-analyzer-lsp --features lsp
           fi
 
-      - name: 📦 Move & Rename Artifacts
+      - name: 📦 Map & Rename
         shell: bash
         run: |
+          mkdir -p artifacts/
           EXE_SUFFIX=""
           if [ "${{ matrix.os }}" = "windows-latest" ]; then EXE_SUFFIX=".exe"; fi
           
-          # Move CLI
           cp target/${{ matrix.target }}/release/swt${EXE_SUFFIX} artifacts/swt-${{ matrix.target }}${EXE_SUFFIX}
           
-          # Move LSP (mapping correctly for extension)
           if [ "${{ matrix.build_lsp }}" = "true" ]; then
-            # Map specific targets to simplified names used by download script
             DEST_NAME="sweet-lsp-${{ matrix.os == 'ubuntu-latest' && 'linux' || (matrix.os == 'windows-latest' && 'win' || 'macos') }}"
             if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then DEST_NAME="sweet-lsp-linux-arm64"; fi
             if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then DEST_NAME="sweet-lsp-macos-arm64"; fi
             if [ "${{ matrix.target }}" = "x86_64-apple-darwin" ]; then DEST_NAME="sweet-lsp-macos"; fi
             if [ "${{ matrix.target }}" = "x86_64-unknown-linux-gnu" ]; then DEST_NAME="sweet-lsp-linux"; fi
             if [ "${{ matrix.target }}" = "x86_64-pc-windows-msvc" ]; then DEST_NAME="sweet-lsp-win.exe"; fi
-
             cp target/${{ matrix.target }}/release/sweet-analyzer-lsp${EXE_SUFFIX} artifacts/${DEST_NAME}
           fi
 
-      - name: 📦 Generate .deb & .rpm
-        if: ${{ matrix.package && matrix.os == 'ubuntu-latest' }}
-        run: |
-          cargo deb --target ${{ matrix.target }} --no-build
-          cargo generate-rpm --target ${{ matrix.target }}
-          cp target/${{ matrix.target }}/debian/*.deb artifacts/
-          cp target/generate-rpm/*.rpm artifacts/ || cp target/${{ matrix.target }}/generate-rpm/*.rpm artifacts/
-
-      - name: 📦 Generate .msi
-        if: ${{ matrix.package && matrix.os == 'windows-latest' }}
-        run: |
-          cargo wix --target ${{ matrix.target }} --no-build -o artifacts/
-        shell: bash
-
-      - name: 📦 Upload Artifacts
+      - name: 📤 Upload Binaries
         uses: actions/upload-artifact@v7
         with:
           name: bin-${{ matrix.target }}
           path: artifacts/*
 
-  publish-cargo:
-    name: Publish to Crates.io
+  package-linux:
+    name: Package (Linux)
+    needs: build-binaries
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target: [x86_64-unknown-linux-gnu]
     steps:
       - uses: actions/checkout@v6
       - name: 🦀 Setup Rust
         uses: dtolnay/rust-toolchain@stable
-      - name: ⚡ Cache Rust Dependencies
-        uses: swatinem/rust-cache@v2
-      - name: 🚢 Publish
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
-        run: cargo publish
+      - name: 🛠️ Install Packaging Tools
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-deb,cargo-generate-rpm
+      - name: 📥 Download Binary
+        uses: actions/download-artifact@v8
+        with:
+          name: bin-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release
+      - name: 📦 Generate .deb & .rpm
+        run: |
+          mv target/${{ matrix.target }}/release/swt-${{ matrix.target }} target/${{ matrix.target }}/release/swt
+          cargo deb --target ${{ matrix.target }} --no-build
+          cargo generate-rpm --target ${{ matrix.target }}
+          mkdir -p dist/
+          cp target/${{ matrix.target }}/debian/*.deb dist/
+          cp target/generate-rpm/*.rpm dist/ || cp target/${{ matrix.target }}/generate-rpm/*.rpm dist/
+      - name: 📤 Upload Linux Packages
+        uses: actions/upload-artifact@v7
+        with:
+          name: pkgs-linux
+          path: dist/*
+
+  package-windows:
+    name: Package (Windows)
+    needs: build-binaries
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        target: [x86_64-pc-windows-msvc]
+    steps:
+      - uses: actions/checkout@v6
+      - name: 🦀 Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: 🛠️ Install Wix
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-wix
+      - name: 📥 Download Binaries
+        uses: actions/download-artifact@v8
+        with:
+          name: bin-${{ matrix.target }}
+          path: target/${{ matrix.target }}/release
+      - name: 📦 Generate .msi
+        shell: bash
+        run: |
+          mv target/${{ matrix.target }}/release/swt-${{ matrix.target }}.exe target/${{ matrix.target }}/release/swt.exe
+          mv target/${{ matrix.target }}/release/sweet-lsp-win.exe target/${{ matrix.target }}/release/sweet-analyzer-lsp.exe
+          cargo wix --target ${{ matrix.target }} --no-build -o dist/
+      - name: 📤 Upload Windows Package
+        uses: actions/upload-artifact@v7
+        with:
+          name: pkgs-win
+          path: dist/*.msi
 
   github-release:
     name: Create GitHub Release
-    needs: build
+    needs: [build-binaries, package-linux, package-windows]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - name: 📥 Download All Binaries
+      - name: 📥 Download All
         uses: actions/download-artifact@v8
         with:
           path: all-artifacts
