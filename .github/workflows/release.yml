@@ -112,8 +112,6 @@ jobs:
 
             cp target/${{ matrix.target }}/release/sweet-analyzer-lsp${EXE_SUFFIX} artifacts/${DEST_NAME}
           fi
-        shell: bash
-
       - name: 📦 Generate .deb & .rpm
         if: ${{ matrix.package && matrix.os == 'ubuntu-latest' }}
         run: |
