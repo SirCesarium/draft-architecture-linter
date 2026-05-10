@@ -80,8 +80,11 @@ pub fn analyze_file(
         FileContent::Owned(fs::read_to_string(path).ok()?)
     } else {
         let file = File::open(path).ok()?;
-        let mmap = unsafe { Mmap::map(&file).ok()? };
-        FileContent::Mapped(mmap)
+        // Try mapping, but fallback to reading if it fails (e.g. system resource exhaustion)
+        match unsafe { Mmap::map(&file) } {
+            Ok(mmap) => FileContent::Mapped(mmap),
+            Err(_) => FileContent::Owned(fs::read_to_string(path).ok()?),
+        }
     };
 
     if ignore::is_file_ignored(&content) {
@@ -283,4 +286,44 @@ pub fn collect_issues<S: BuildHasher>(
     }
 
     issues
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::error::Error;
+    use std::fs::File;
+    use std::io::Write;
+    use tempfile::tempdir;
+
+    #[test]
+    fn test_analyze_file_fallback_logic() -> Result<(), Box<dyn Error>> {
+        let dir = tempdir()?;
+        let config = Config::default();
+
+        // 1. Test small file (no mmap)
+        let small_path = dir.path().join("small.rs");
+        let mut file = File::create(&small_path)?;
+        writeln!(file, "fn main() {{}}")?;
+
+        let res = analyze_file(&small_path, &config, true);
+        assert!(
+            res.is_some(),
+            "Should analyze small file via read_to_string"
+        );
+
+        // 2. Test "large" file (tries mmap)
+        let large_path = dir.path().join("large.rs");
+        let mut file = File::create(&large_path)?;
+        // Create a file > 16KB to trigger mmap attempt
+        let content = "fn main() {\n    println!(\"hello\");\n}\n".repeat(500);
+        write!(file, "{content}")?;
+
+        let res = analyze_file(&large_path, &config, true);
+        assert!(
+            res.is_some(),
+            "Should analyze large file via mmap or fallback"
+        );
+        Ok(())
+    }
 }

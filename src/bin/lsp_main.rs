@@ -25,7 +25,7 @@ mod tests {
     use super::*;
     use std::error::Error;
     use std::result::Result as StdResult;
-    use tower_lsp::lsp_types::{InitializeParams, Url};
+    use tower_lsp::lsp_types::{InitializeParams, InitializedParams, Url};
     use tower_lsp::{LanguageServer, LspService};
 
     #[tokio::test]
@@ -46,6 +46,14 @@ mod tests {
             .inner()
             .validate_document(uri, "test".to_string())
             .await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_initialized_no_crash() -> StdResult<(), Box<dyn Error>> {
+        let (service, _) = LspService::new(Backend::new);
+        // This triggers the workspace scan which caused SIGSEGV in rc.8
+        service.inner().initialized(InitializedParams {}).await;
         Ok(())
     }
 }

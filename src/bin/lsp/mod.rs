@@ -13,7 +13,7 @@ use swt::analyzer::ignore::get_disabled_rules;
 use swt::analyzer::{AnalysisEngine, analyze_content};
 use swt::languages::{Language, LanguageRegistry};
 use tokio::sync::RwLock;
-use tokio::task::JoinHandle;
+use tokio::task::{JoinHandle, spawn_blocking};
 use tokio::time::sleep;
 use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
@@ -135,20 +135,33 @@ impl LanguageServer for Backend {
             .log_message(MessageType::INFO, "Sweet LSP server initialized!")
             .await;
 
-        // Initial full workspace scan
+        // Initial full workspace scan (delayed and safe)
         let roots = self.workspace_roots.read().await.clone();
         let client = self.client.clone();
 
         tokio::spawn(async move {
+            // Wait a bit for the client to settle before hammering the CPU
+            sleep(Duration::from_secs(1)).await;
+
             for root in roots {
-                let engine = AnalysisEngine::new(root, Config::default());
-                let results = engine.run(true, false, true, true);
+                let root_clone = root.clone();
+                let client_clone = client.clone();
+
+                // Use spawn_blocking for CPU-heavy tasks to avoid SIGSEGV/Runtime issues
+                let results = spawn_blocking(move || {
+                    let engine = AnalysisEngine::new(root_clone, Config::default());
+                    engine.run(true, false, true, true)
+                })
+                .await
+                .unwrap_or_default();
 
                 for report in results {
                     if let Ok(uri) = Url::from_file_path(&report.path) {
                         let config = report.config.clone().unwrap_or_default();
                         let diagnostics = diag::generate(&report, &config);
-                        let () = client.publish_diagnostics(uri, diagnostics, None).await;
+                        let () = client_clone
+                            .publish_diagnostics(uri, diagnostics, None)
+                            .await;
                     }
                 }
             }

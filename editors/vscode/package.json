@@ -2,11 +2,11 @@
   "name": "sweet",
   "displayName": "Sweet",
   "description": "Blazing-fast code health and architecture analyzer.",
-  "version": "4.99.8",
+  "version": "4.99.9",
   "publisher": "SirCesarium",
   "icon": "icon.png",
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.118.0"
   },
   "repository": {
     "type": "git",
@@ -21,28 +21,55 @@
     "languages": [
       {
         "id": "gdscript",
-        "extensions": [".gd"],
-        "aliases": ["GDScript"]
+        "extensions": [
+          ".gd"
+        ],
+        "aliases": [
+          "GDScript"
+        ]
       },
       {
         "id": "lua",
-        "extensions": [".lua"],
-        "aliases": ["Lua"]
+        "extensions": [
+          ".lua"
+        ],
+        "aliases": [
+          "Lua"
+        ]
       },
       {
         "id": "go",
-        "extensions": [".go"],
-        "aliases": ["Go"]
+        "extensions": [
+          ".go"
+        ],
+        "aliases": [
+          "Go"
+        ]
       },
       {
         "id": "php",
-        "extensions": [".php"],
-        "aliases": ["PHP"]
+        "extensions": [
+          ".php"
+        ],
+        "aliases": [
+          "PHP"
+        ]
       },
       {
         "id": "cpp",
-        "extensions": [".cpp", ".c", ".h", ".hpp", ".cc", ".cxx"],
-        "aliases": ["C/C++", "C++", "C"]
+        "extensions": [
+          ".cpp",
+          ".c",
+          ".h",
+          ".hpp",
+          ".cc",
+          ".cxx"
+        ],
+        "aliases": [
+          "C/C++",
+          "C++",
+          "C"
+        ]
       },
       {
         "id": "json",
@@ -113,9 +140,9 @@
     "LICENSE"
   ],
   "devDependencies": {
-    "@types/node": "^25.5.0",
-    "@types/vscode": "^1.85.0",
-    "@vscode/vsce": "^3.7.1",
+    "@types/node": "^25.6.2",
+    "@types/vscode": "^1.118.0",
+    "@vscode/vsce": "^3.9.1",
     "esbuild": "^0.28.0",
     "typescript": "^6.0.3"
   },
