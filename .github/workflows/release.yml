@@ -114,12 +114,16 @@ jobs:
           cp target/${{ matrix.target }}/release/swt${EXE_SUFFIX} artifacts/swt-${{ matrix.target }}${EXE_SUFFIX}
           
           if [ "${{ matrix.build_lsp }}" = "true" ]; then
-            DEST_NAME="sweet-lsp-${{ matrix.os == 'ubuntu-latest' && 'linux' || (matrix.os == 'windows-latest' && 'win' || 'macos') }}"
-            if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then DEST_NAME="sweet-lsp-linux-arm64"; fi
-            if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then DEST_NAME="sweet-lsp-macos-arm64"; fi
-            if [ "${{ matrix.target }}" = "x86_64-apple-darwin" ]; then DEST_NAME="sweet-lsp-macos"; fi
+            # Default unique name to avoid collisions
+            DEST_NAME="sweet-lsp-${{ matrix.target }}${EXE_SUFFIX}"
+            
+            # Legacy/Simple names for the VS Code extension
             if [ "${{ matrix.target }}" = "x86_64-unknown-linux-gnu" ]; then DEST_NAME="sweet-lsp-linux"; fi
+            if [ "${{ matrix.target }}" = "aarch64-unknown-linux-gnu" ]; then DEST_NAME="sweet-lsp-linux-arm64"; fi
+            if [ "${{ matrix.target }}" = "x86_64-apple-darwin" ]; then DEST_NAME="sweet-lsp-macos"; fi
+            if [ "${{ matrix.target }}" = "aarch64-apple-darwin" ]; then DEST_NAME="sweet-lsp-macos-arm64"; fi
             if [ "${{ matrix.target }}" = "x86_64-pc-windows-msvc" ]; then DEST_NAME="sweet-lsp-win.exe"; fi
+
             cp target/${{ matrix.target }}/release/sweet-analyzer-lsp${EXE_SUFFIX} artifacts/${DEST_NAME}
           fi
 

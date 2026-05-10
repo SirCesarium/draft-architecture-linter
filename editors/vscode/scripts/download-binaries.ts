@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { get } from 'node:https';
 import { chmodSync, existsSync, mkdirSync } from 'node:fs';
 
-const VERSION = '5.0.0-rc.9';
+const VERSION = '5.0.0-rc.10';
 const REPO = 'SirCesarium/sweet';
 const BIN_DIR = path.join(__dirname, '..', 'bin');
 
