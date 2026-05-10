@@ -73,7 +73,9 @@ impl Backend {
             }
         }
 
-        let config = Config::load(&canonical_path).unwrap_or_default();
+        let mut config = Config::load(&canonical_path).unwrap_or_default();
+        config.cross_file_repetition = false;
+
         if config.is_excluded(&canonical_path) {
             return None;
         }
@@ -149,8 +151,10 @@ impl LanguageServer for Backend {
 
                 // Use spawn_blocking for CPU-heavy tasks to avoid SIGSEGV/Runtime issues
                 let results = spawn_blocking(move || {
-                    let engine = AnalysisEngine::new(root_clone, Config::default());
-                    engine.run(true, false, true, true)
+                    let mut config = Config::default();
+                    config.cross_file_repetition = false;
+                    let engine = AnalysisEngine::new(root_clone, config);
+                    engine.run(true, false, true, false)
                 })
                 .await
                 .unwrap_or_default();
