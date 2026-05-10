@@ -46,7 +46,7 @@ fn test_cli_json_output() {
         .arg("--json")
         .assert()
         .failure()
-        .stdout(predicate::str::contains("\"line\": 1"))
+        .stdout(predicate::str::contains("\"line\": null"))
         .stdout(predicate::str::contains("\"message\": \"File too long"));
 }
 

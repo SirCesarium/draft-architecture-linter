@@ -57,7 +57,8 @@ fn match_rule(message: &str) -> &'static str {
 
 const fn to_lsp_severity(severity: Severity) -> DiagnosticSeverity {
     match severity {
-        Severity::Error | Severity::Warning => DiagnosticSeverity::WARNING,
+        Severity::Error => DiagnosticSeverity::ERROR,
+        Severity::Warning => DiagnosticSeverity::WARNING,
     }
 }
 

@@ -163,7 +163,7 @@ fn handle_json_reporting(reports: &[FileReport], json_opt: Option<&PathBuf>, _qu
 
         for issue in &report.issues {
             problems.push(json!({
-                "line": issue.line.unwrap_or(1),
+                "line": issue.line,
                 "message": issue.message
             }));
         }

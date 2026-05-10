@@ -145,18 +145,16 @@ pub fn analyze_content<S: BuildHasher>(
 
     let mut issues = collect_issues(&metrics, thresholds, config, disabled_rules);
 
-    // Specific lines where depth is exceeded.
-    if !disabled_rules.contains("max-depth") {
-        for (line, depth) in &deep_lines {
-            issues.push(crate::Issue {
-                message: format!(
-                    "Excessive nesting: {} levels (max {})",
-                    depth, thresholds.max_depth
-                ),
-                severity: config.thresholds.severities.get("max-depth"),
-                line: Some(*line),
-            });
-        }
+    // Summary issue for depth if not disabled.
+    if !disabled_rules.contains("max-depth") && metrics.max_depth > thresholds.max_depth {
+        issues.push(crate::Issue {
+            message: format!(
+                "Excessive nesting: {} levels (max {})",
+                metrics.max_depth, thresholds.max_depth
+            ),
+            severity: config.thresholds.severities.get("max-depth"),
+            line: None,
+        });
     }
 
     let is_sweet = issues.iter().all(|i| i.severity != crate::Severity::Error);
