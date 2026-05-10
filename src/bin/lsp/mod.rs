@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 use swt::Config;
-use swt::analyzer::analyze_content;
+use swt::analyzer::{analyze_content, AnalysisEngine};
 use swt::analyzer::ignore::get_disabled_rules;
 use swt::languages::{Language, LanguageRegistry};
 use tokio::sync::RwLock;
@@ -19,9 +19,9 @@ use tower_lsp::jsonrpc::Result;
 use tower_lsp::lsp_types::{
     CodeAction, CodeActionKind, CodeActionOrCommand, CodeActionParams,
     CodeActionProviderCapability, CodeActionResponse, DidChangeTextDocumentParams,
-    DidOpenTextDocumentParams, InitializeParams, InitializeResult, InitializedParams, MessageType,
-    Position, Range, ServerCapabilities, TextDocumentSyncCapability, TextDocumentSyncKind,
-    TextEdit, Url, WorkspaceEdit,
+    DidCloseTextDocumentParams, DidOpenTextDocumentParams, InitializeParams, InitializeResult,
+    InitializedParams, MessageType, Position, Range, ServerCapabilities,
+    TextDocumentSyncCapability, TextDocumentSyncKind, TextEdit, Url, WorkspaceEdit,
 };
 use tower_lsp::{Client, LanguageServer};
 
@@ -48,6 +48,8 @@ impl Backend {
             self.client
                 .publish_diagnostics(uri, diagnostics, None)
                 .await;
+        } else {
+            self.client.publish_diagnostics(uri, Vec::new(), None).await;
         }
     }
 
@@ -58,7 +60,7 @@ impl Backend {
             return None;
         }
 
-        let canonical_path = fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+        let canonical_path = fs::canonicalize(&path).unwrap_or(path);
 
         {
             let roots_lock = self.workspace_roots.read().await;
@@ -132,11 +134,55 @@ impl LanguageServer for Backend {
         self.client
             .log_message(MessageType::INFO, "Sweet LSP server initialized!")
             .await;
+
+        // Initial full workspace scan
+        let roots = self.workspace_roots.read().await.clone();
+        let client = self.client.clone();
+
+        tokio::spawn(async move {
+            for root in roots {
+                let engine = AnalysisEngine::new(root, Config::default());
+                let results = engine.run(true, false, true, true);
+
+                for report in results {
+                    if let Ok(uri) = Url::from_file_path(&report.path) {
+                        let config = report.config.clone().unwrap_or_default();
+                        let diagnostics = diag::generate(&report, &config);
+                        let () = client.publish_diagnostics(uri, diagnostics, None).await;
+                    }
+                }
+            }
+        });
     }
 
     async fn did_open(&self, params: DidOpenTextDocumentParams) {
         self.validate_document(params.text_document.uri, params.text_document.text)
             .await;
+    }
+
+    async fn did_close(&self, params: DidCloseTextDocumentParams) {
+        let uri = params.text_document.uri;
+        if let Some((_, handle)) = self.pending_validations.remove(&uri) {
+            handle.abort();
+        }
+
+        // Only clear diagnostics on close if the file is OUTSIDE the workspace
+        // or excluded. Workspace files should keep their diagnostics visible.
+        if let Ok(path) = uri.to_file_path() {
+            let canonical_path = fs::canonicalize(&path).unwrap_or(path);
+            let is_external = {
+                let roots_lock = self.workspace_roots.read().await;
+                !roots_lock.is_empty()
+                    && !roots_lock
+                        .iter()
+                        .any(|root| canonical_path.starts_with(root))
+            };
+
+            let config = Config::load(&canonical_path).unwrap_or_default();
+            if is_external || config.is_excluded(&canonical_path) {
+                self.client.publish_diagnostics(uri, Vec::new(), None).await;
+            }
+        }
     }
 
     async fn did_change(&self, params: DidChangeTextDocumentParams) {
@@ -160,10 +206,13 @@ impl LanguageServer for Backend {
 
             let path = uri_clone.to_file_path().unwrap_or_default();
             if !Config::is_supported_file(&path) {
+                let () = client
+                    .publish_diagnostics(uri_clone.clone(), Vec::new(), None)
+                    .await;
                 return;
             }
 
-            let canonical_path = fs::canonicalize(&path).unwrap_or_else(|_| path.clone());
+            let canonical_path = fs::canonicalize(&path).unwrap_or(path);
 
             {
                 let roots_lock = workspace_roots.read().await;
@@ -172,12 +221,18 @@ impl LanguageServer for Backend {
                         .iter()
                         .any(|root| canonical_path.starts_with(root))
                 {
+                let () = client
+                        .publish_diagnostics(uri_clone.clone(), Vec::new(), None)
+                        .await;
                     return;
                 }
             }
 
             let config = Config::load(&canonical_path).unwrap_or_default();
             if config.is_excluded(&canonical_path) {
+                let () = client
+                    .publish_diagnostics(uri_clone.clone(), Vec::new(), None)
+                    .await;
                 return;
             }
 
