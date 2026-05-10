@@ -1,7 +1,7 @@
 > [!WARNING]
 > This version of Sweet is a functional prototype largely generated with AI for proof-of-concept purposes. As such, it may lack rigorous architectural standards.
 > 
-> The project will be rewritten from scratch under the [@MechanicalLabs](https://github/MechanicalLabs) organization to ensure best practices, performance optimization, and full manual audit.
+> The project will be rewritten from scratch under the [@MechanicalLabs](https://github.com/MechanicalLabs) organization to ensure best practices, performance optimization, and full manual audit.
 
 <h1 align="center">🍬 Sweet (swt)</h1>
 
